@@ -54,6 +54,27 @@ def read_json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def check_csv_shape(path: Path, name: str) -> list[str]:
+    """CSV 每行的字段数必须与表头一致，否则 DictReader 会静默错位。"""
+    if not path.exists():
+        return []
+    lines = [
+        ln for ln in path.read_text(encoding="utf-8").splitlines()
+        if ln.strip() and not ln.lstrip().startswith("#")
+    ]
+    if not lines:
+        return []
+    rows = list(csv.reader(io.StringIO("\n".join(lines))))
+    width = len(rows[0])
+    errors = []
+    for idx, row in enumerate(rows[1:], start=2):
+        if len(row) != width:
+            errors.append(
+                f"[R0] {name} 第 {idx} 行有 {len(row)} 个字段，表头是 {width} 个，列会错位"
+            )
+    return errors
+
+
 def split_ids(value: str) -> list[str]:
     """多值字段分隔：; , 、 以及空白分隔。"""
     if not value:
@@ -68,9 +89,12 @@ def as_float(value: str) -> float | None:
         return None
 
 
-def run_checks(schema_dir: Path) -> tuple[list[str], list[str]]:
+def run_checks(schema_dir: Path, draft: bool = False) -> tuple[list[str], list[str]]:
     errors: list[str] = []
     warnings: list[str] = []
+
+    errors.extend(check_csv_shape(schema_dir / "episodes.csv", "episodes.csv"))
+    errors.extend(check_csv_shape(schema_dir / "shots.csv", "shots.csv"))
 
     bible = read_json(schema_dir / "story_bible.json")
     assets_doc = read_json(schema_dir / "assets.json")
@@ -132,17 +156,19 @@ def run_checks(schema_dir: Path) -> tuple[list[str], list[str]]:
             scene_index.add((ep, sc))
 
         # R3 场次引用完整性
-        for cid in split_ids(e.get("characters", "")):
-            if cid not in known_ids:
-                errors.append(f"[R2] {ep}/{sc} 的 characters 引用了不存在的资产：{cid}")
-        env = e.get("location_env_id", "")
-        if env and env not in known_ids:
-            errors.append(f"[R2] {ep}/{sc} 的 location_env_id 不存在：{env}")
+        if not draft:
+            for cid in split_ids(e.get("characters", "")):
+                if cid not in known_ids:
+                    errors.append(f"[R2] {ep}/{sc} 的 characters 引用了不存在的资产：{cid}")
+            env = e.get("location_env_id", "")
+            if env and env not in known_ids:
+                errors.append(f"[R2] {ep}/{sc} 的 location_env_id 不存在：{env}")
 
     # ── R5 角色必须有锚定物 ───────────────────────────────────
-    for aid, a in character_assets.items():
-        if not a.get("anchor_file") and not a.get("soul_reference_id"):
-            errors.append(f"[R5] 角色 {aid} 既无 anchor_file 也无 soul_reference_id，无法锁定一致性")
+    if not draft:
+        for aid, a in character_assets.items():
+            if not a.get("anchor_file") and not a.get("soul_reference_id"):
+                errors.append(f"[R5] 角色 {aid} 既无 anchor_file 也无 soul_reference_id，无法锁定一致性")
 
     # ── 逐个镜头检查 ─────────────────────────────────────────
     seen_shot_ids: set[str] = set()
@@ -160,13 +186,14 @@ def run_checks(schema_dir: Path) -> tuple[list[str], list[str]]:
         if pair not in scene_index:
             errors.append(f"[R1] {tag} 指向的场次不存在：{pair[0]}/{pair[1]}")
 
-        for rid in split_ids(s.get("refs", "")):
-            if rid not in known_ids:
-                errors.append(f"[R2] {tag} 的 refs 引用了不存在的资产：{rid}")
+        if not draft:
+            for rid in split_ids(s.get("refs", "")):
+                if rid not in known_ids:
+                    errors.append(f"[R2] {tag} 的 refs 引用了不存在的资产：{rid}")
 
-        vid = s.get("voice_id", "")
-        if vid and vid not in known_ids:
-            errors.append(f"[R2] {tag} 的 voice_id 不存在：{vid}")
+            vid = s.get("voice_id", "")
+            if vid and vid not in known_ids:
+                errors.append(f"[R2] {tag} 的 voice_id 不存在：{vid}")
 
         if not s.get("script_ref", ""):
             errors.append(f"[R6] {tag} 缺少 script_ref，无法回溯到剧本")
@@ -179,7 +206,8 @@ def run_checks(schema_dir: Path) -> tuple[list[str], list[str]]:
         if s.get("status") == "done":
             bad = [f for f in QA_FIELDS if s.get(f, "") != "pass"]
             if bad:
-                errors.append(f"[R7] {tag} 已标 done，但 QA 未全通过：{', '.join(bad)}")
+                msg = f"{tag} 已标 done，但 QA 未全通过：{', '.join(bad)}"
+                (warnings if draft else errors).append(f"[R7] {msg}")
 
         dur = as_float(s.get("duration_s", ""))
         adur = as_float(s.get("audio_duration_s", ""))
@@ -262,7 +290,17 @@ def selftest() -> int:
         if not any("PR-099" in e for e in bad_errors):
             print("自检失败：坏引用没有被抓到。")
             return 1
-    print("自检通过：干净数据 0 错误，坏引用被抓到。")
+        draft_errors, _ = run_checks(d, draft=True)
+        if any("PR-099" in e for e in draft_errors):
+            print("自检失败：草稿模式不应检查资产引用。")
+            return 1
+        with (d / "shots.csv").open("a", encoding="utf-8") as f:
+            f.write("EP01-SC01-SH003,EP01,SC01,3\n")
+        shape_errors, _ = run_checks(d)
+        if not any("列会错位" in e for e in shape_errors):
+            print("自检失败：列数错位没有被抓到。")
+            return 1
+    print("自检通过：干净数据 0 错误；坏引用、草稿模式、列错位三项行为正确。")
     return 0
 
 
@@ -272,6 +310,8 @@ def main() -> int:
                         help="schema 目录，默认 <项目根>/schema")
     parser.add_argument("--json", action="store_true", help="输出 JSON")
     parser.add_argument("--selftest", action="store_true", help="自检校验器本身")
+    parser.add_argument("--draft", action="store_true",
+                        help="草稿模式：跳过资产存在性检查，允许先出分镜稿再补资产")
     args = parser.parse_args()
 
     if args.selftest:
@@ -282,7 +322,7 @@ def main() -> int:
         print(f"找不到 schema 目录：{schema_dir}", file=sys.stderr)
         return 1
 
-    errors, warnings = run_checks(schema_dir)
+    errors, warnings = run_checks(schema_dir, draft=args.draft)
 
     if args.json:
         print(json.dumps({"errors": errors, "warnings": warnings,

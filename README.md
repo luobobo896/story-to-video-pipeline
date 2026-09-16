@@ -80,6 +80,7 @@ higgsfield model list            # 核实现行模型，别照抄文档
 
 # 4. 每完成一个阶段就跑一次校验
 python3 tools/check_consistency.py
+python3 tools/check_consistency.py --draft      # 分镜先出稿、资产后补时用
 python3 tools/check_consistency.py --selftest   # 验证校验器本身没坏
 ```
 
