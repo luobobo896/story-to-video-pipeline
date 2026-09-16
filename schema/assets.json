@@ -83,7 +83,47 @@
       "review": "偏中性：木/石/织物/金属四块材质与左上硬光达标，但缺冷白刀光的高对比元素，背景剥落墙面引入了不属于本片的破败感。可用作材质与光位锚，若成片色调不统一则重生成 v002"
     }
   ],
-  "voices": [],
+  "voices": [
+    {
+      "asset_id": "VC-001",
+      "type": "voice",
+      "character_id": "CH-001",
+      "name": "江小白",
+      "voice_id": "e6f9b893-51b1-51d3-afe9-9e0482cb7ac1",
+      "voice_type": "preset",
+      "engine_variant": "seed_speech",
+      "preset_name": "Benji",
+      "status": "draft",
+      "created_at": "2026-09-16",
+      "review": "少年感候选。同句海选：Arthur 2.04s / Benji 2.26s / Dylan 2.02s，三个都能说中文。待作者听过后定稿，换音色只需改本行的 voice_id"
+    },
+    {
+      "asset_id": "VC-002",
+      "type": "voice",
+      "character_id": "CH-002",
+      "name": "江景承",
+      "voice_id": "30fc8796-ceb6-4a66-b3a7-4a145ef7f346",
+      "voice_type": "preset",
+      "engine_variant": "seed_speech",
+      "preset_name": "Arthur",
+      "status": "draft",
+      "created_at": "2026-09-16",
+      "review": "沉稳中年武将候选。同句海选：Arthur 4.824s / Holden 4.824s。待作者定稿"
+    },
+    {
+      "asset_id": "VC-003",
+      "type": "voice",
+      "character_id": "CH-003",
+      "name": "沈芸",
+      "voice_id": "3c2b83c0-2e0a-5ae8-998a-a5fe71b7eccd",
+      "voice_type": "preset",
+      "engine_variant": "seed_speech",
+      "preset_name": "Helena",
+      "status": "draft",
+      "created_at": "2026-09-16",
+      "review": "温和中年女候选。同句海选：Helena 4.824s / Delia 5.040s。待作者定稿"
+    }
+  ],
   "notes": "由 S2 填写。source: generated=生成 | trained=训练得到 | imported=外部导入。规则：只追加不覆盖，每次生成新增一行。soul_reference_id 留空（Soul 训练需 Basic 以上套餐，当前未购买）。",
   "assets_field_reference": {
     "asset_id": "CH-001 / PR-001 / EN-001 / WD-001 / ST-001",

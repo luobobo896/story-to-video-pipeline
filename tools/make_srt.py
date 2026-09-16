@@ -69,6 +69,7 @@ def main() -> int:
 
     cursor = 0.0
     cues = []
+    overflow = []
     for r in rows:
         try:
             dur = float(r.get("duration_s") or 0)
@@ -80,7 +81,20 @@ def main() -> int:
         if not text:
             continue
         text = text.replace("【内心OS】", "").strip()
-        cues.append((start, end, wrap(text, args.max_chars), r.get("shot_id", "")))
+
+        # 字幕跟**真实语音时长**走，不跟分镜表的理论时长走。
+        # 没有音频时退回镜头时长（草稿阶段）。
+        raw_audio = (r.get("audio_duration_s") or "").strip()
+        try:
+            audio = float(raw_audio) if raw_audio else 0.0
+        except ValueError:
+            audio = 0.0
+        cue_end = start + audio if audio else end
+        if cue_end > end:
+            # 语音比镜头长：字幕不能越到下一镜，截到本镜末并记录溢出
+            overflow.append((r.get("shot_id", ""), audio, dur))
+            cue_end = end
+        cues.append((start, cue_end, wrap(text, args.max_chars), r.get("shot_id", "")))
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with out_path.open("w", encoding="utf-8") as f:
@@ -88,6 +102,10 @@ def main() -> int:
             f.write(f"{i}\n{ts(start)} --> {ts(end)}\n{text}\n\n")
 
     print(f"写入 {out_path}：{len(cues)} 条字幕，覆盖 {len(rows)} 个镜头，总时长 {cursor:.2f}s")
+    if overflow:
+        print(f"注意：{len(overflow)} 条语音长于镜头，字幕已截到镜头末（需改分镜或改台词）：")
+        for sid, a, d in overflow:
+            print(f"  {sid}: 语音 {a:.2f}s > 镜头 {d:g}s")
     return 0
 
 
