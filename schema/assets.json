@@ -19,6 +19,38 @@
       "review": "已自检：年龄感、发型、服装、腰束、体型均符合锚点。待作者过目定稿"
     },
     {
+      "asset_id": "CH-002",
+      "type": "character",
+      "name": "江景承",
+      "source": "generated",
+      "anchor_file": "project/work/assets/CH-002_v001.png",
+      "sha256": "5515faf40450d31eec8d04c8d87a0baec2a40fb0e1ea7a204c0b653bf4efddba",
+      "job_id": "afa0db0c-9181-4fe6-997e-ffdf3b2db9be",
+      "soul_reference_id": "",
+      "version": "v001",
+      "model": "nano_banana_pro",
+      "cost_credits": 2,
+      "status": "draft",
+      "created_at": "2026-09-16",
+      "review": "已自检：年龄感、短须连鬓、鬓角见白、黑铁小冠、魁梧体型、玄色常服、单侧暗铜护肩、宽革带全部符合锚点"
+    },
+    {
+      "asset_id": "PR-001",
+      "type": "prop",
+      "name": "江景承的长刀",
+      "source": "generated",
+      "anchor_file": "project/work/assets/PR-001_v001.png",
+      "sha256": "ad2eb7282bbca049c0b7cd2ed6b1a64608d5961458458329a8b1625665707844",
+      "job_id": "4e1dc734-5d25-47cc-86e7-2d307a57f192",
+      "soul_reference_id": "",
+      "version": "v001",
+      "model": "nano_banana_pro",
+      "cost_credits": 2,
+      "status": "draft",
+      "created_at": "2026-09-16",
+      "review": "已自检：直刃、锻纹、两处豁口、素铁护手、深色缠柄、铜环俱全。注意：SH004 生成时刀形发生漂移，参考图本身没问题，属视频模型的道具保持能力不足"
+    },
+    {
       "asset_id": "EN-001",
       "type": "environment",
       "name": "镇北侯府·厅堂",
