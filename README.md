@@ -6,6 +6,38 @@
 > 项目实例在 [`projects/`](projects/) 下各自独立；**项目状态只写在项目自己的 `README.md` 里。**
 > 这份文件是**总清单**：用了什么系统、什么版本、什么依赖、什么组件、什么 skill，每一步分别干什么。
 
+## 优势速览：做了什么 · 解决了什么痛点
+
+**定位**：把「一堆 AI 生成的片段」串成能交付的成片——**状态只存在文件里，卡点全由脚本判定**。
+
+**做了哪些**：
+
+| 做了 | 规模 |
+|---|---|
+| 工序链 | N0–N12 共 13 道，关键路径 N0 → N1 → N6 → N7 → N8 → N10 → N11 → N12 |
+| 验收关 | G0–G7 共 8 道，其中 3 处**停机等作者**（定妆关 / 过片抽查 / 定剪通看）；批量生成前的积分预算、未决问题同样要停 |
+| 自动校验 | `tools/check_consistency.py` 的 R0–R21，0 错误才放行；`--delivery` 另审交付完整性 |
+| 规则库 | 5 类 50 条硬/软阈值：COMP 12 · ME 10 · PH 11 · VD 6 · FF 11 |
+| 脚本 | `tools/` 7 个，纯标准库、零第三方依赖 |
+| 场记台账 | 每项目 `schema/` 四件套（`shots.csv` 48 列，从中文提示词一直记到 QA 十项） |
+| 文档与 skill | `docs/` 九篇（01–06、08–10；07 属项目层）、`rules/` 五篇、编排 skill `story-to-video` |
+| 复用方式 | 复用层（本仓库）与项目层（`projects/<项目名>/`）分离：短剧 / 网剧 / 影视 / 动画 / 漫剧共用同一条工序链，差别只在题材与时长参数 |
+
+**解决了什么痛点**：
+
+| 痛点 | 通常怎么翻车 | 这套怎么做 |
+|---|---|---|
+| 角色 / 场景 / 风格漂移 | 每条镜头各自生成，人物脸和场景越走越远 | **资产先于镜头**：定妆图三视图、场景空镜、风格锚图先定稿再分镜；锚点带 `sha256` 入台账，每镜挂同一套参考图 |
+| 一换会话就失忆 | 状态存在对话里，重开就重来，交接就断片 | 状态只从磁盘 `schema/` 读，任何一次重开都接得上 |
+| 物理与表演假 | 悬浮、匀速漂移、脸部微表情崩坏 | `rules/PH` 11 条与 `rules/ME` 10 条把实测阈值写成硬约束（含帧差测量方法），不是「看着还行」 |
+| 台词超镜头、字幕对不上 | 到剪辑才发现，只能返工 | N7 写分镜时就算台词预算，N9 用**实测音频时长**回填，R8 / R16 拦 |
+| 剪辑工具链踩坑 | 普通 ffmpeg 没有字幕滤镜，一条命令白干 | 强制 `ffmpeg-full` + `rules/FF` 11 条：响度、转场、字幕，单镜时长不得改 |
+| 积分烧穿 | 档位不匹配、模型越档、反复重生成 | [docs/10](docs/10-account-plans-and-credits.md) 写清档位门槛与单价 + 预算；R21 拦模型越档；不合格重生成有判据 |
+| 上下文被素材撑爆 | 4–9MB 的图直接进上下文，请求被网关 413 | `tools/eye.py` 先把任意素材压到 ≤300KB JPEG 再看 |
+| 交付没凭据 | 换人接手只能口口相传 | 台账 + 验收关 + 归档包 + git tag，解压后能重新校验通过 |
+
+**一句话优势**：可中断、可交接、可回溯、成本可算——「这一步做完没有」由脚本回答，不由记忆回答。
+
 ---
 
 ## 一、系统环境（本机实测，2026-09-16）
@@ -91,8 +123,29 @@ ffmpeg -hide_banner -filters | grep -E "subtitles|drawtext"   # 两条都要有�
 | `novel-storyboard` | 1.3.0 · 同上 | 分镜三层：段（≤15s）→ 分镜（2–5s 硬门）→ 分镜图；H3 提示词逐字对账，17 道质量门 | N7 分镜、N8 关键帧 |
 | `ffmpeg-skill` | 1.17.3 · `kajisho5/ffmpeg-skill`（MIT，42 个工具） | **所有剪辑与交付**：裁剪、拼接、横转竖、字幕、响度、合规检查、QA 看图 | N11 剪辑、N12 交付 |
 | `seedance`（seedance-prompt-skill） | `MapleShaw/seedance2.0-prompt-skill`（MIT） | 运镜四维编码 Z/Y/X/F、25 格流水线、六套剪辑公式 | N7 分镜、N11 节奏 |
+| `higgsfield-generate`（同仓库共 9 个 skill） | 0.12.0 · [higgsfield-skills](https://github.com/higgsfield-ai/skills) | 出图 / 出视频 / 出音频，30+ 模型统一入口（`soul_location`、`nano_banana_pro`、`seedance_2_0`…） | N6 参考图、N8 关键帧、N9 配音 |
 
-源码仓库都在 `~/work/个人文档/v-pr/` 下：`shuohao-skills/`、`seedance-prompt-skill/`；`ffmpeg-skill` 装在 `~/.agents/skills/`。
+装法（上面几个仓库各装一次；走软链装的，之后 `git pull` 即生效）：
+
+```bash
+# shuohao-skills：短剧前段五件套（novel-*），自带脚本软链进 agent 的 skills 目录
+git clone https://github.com/eternityspring/shuohao-skills.git && cd shuohao-skills && ./scripts/install.sh
+
+# higgsfield 官方 9 个 skill（含 higgsfield-generate）；顺带装好 CLI，装完跑 higgsfield auth login
+npx skills add higgsfield-ai/skills       # 等价：gh skill install higgsfield-ai/skills
+
+# seedance / ffmpeg：源码留在仓库外，软链复用，避免分叉
+ln -s <seedance 仓库根> ~/.agents/skills/seedance-prompt-skill
+npx ffmpeg-skill --codex            # → ~/.agents/skills/ffmpeg-skill
+
+# 本仓库自带的编排 skill
+ln -s <本仓库根>/skills/story-to-video ~/.codex/skills/story-to-video
+
+ls ~/.codex/skills ~/.agents/skills | grep -E "novel-|higgsfield-|ffmpeg-skill|seedance"   # 验证
+# higgsfield 自检：在 agent 里说「用 higgsfield 出一张最小测试图」，它应调 higgsfield-generate 并返回图片 URL
+```
+
+本机实际位置：`higgsfield-skills/`、`shuohao-skills/`、`seedance-prompt-skill/` 都在仓库的上一级 `~/work/个人文档/v-pr/`，`ffmpeg-skill` 直接装在 `~/.agents/skills/`。逐条的验证命令与登录态排查见 [docs/09](docs/09-toolchain-setup.md)。
 
 ### 3.3 Codex 内置（按需）
 
@@ -117,7 +170,7 @@ ffmpeg -hide_banner -filters | grep -E "subtitles|drawtext"   # 两条都要有�
 | 组件 | 路径 | 是什么 | 谁写 |
 |---|---|---|---|
 | 规则库 | `rules/` | 与剧本、模型无关的硬约束：`COMP`（成片核心要素 12 项）、`ME`（表演与微表情 10 条）、`PH`（物理与动作 11 条）、`VD`（配音与字幕 6 条）、`FF`（剪辑与交付 11 条）；阈值分 `[硬]` / `[软]` | 人 |
-| 通用文档 | `docs/01–06`、`docs/08`、`docs/09` | 01 阶段说明、02 一致性控制、03 依赖与凭证、04 风险与验收关、05 运行与编排、06 连贯性与物理检查清单、08 工序依赖总图、09 工具链安装登录注册 | 人 |
+| 通用文档 | `docs/01–06`、`docs/08–10` | 01 阶段说明、02 一致性控制、03 依赖与凭证、04 风险与验收关、05 运行与编排、06 连贯性与物理检查清单、08 工序依赖总图、09 工具链安装登录注册、10 账号档位与积分 | 人 |
 | 脚本 | `tools/` | 见下方脚本清单 | 人 / Codex |
 | 骨架模板 | `templates/schema/` | 新项目 `schema/` 的骨架（CSV 表头 + JSON 空结构），`bootstrap.py` 的唯一来源 | 人 |
 | 项目实例 | `projects/<项目名>/` | 每个剧本一套：`schema/`（场记台账）、`project/`（素材）、`docs/07`（实测记录）、`README.md`（状态） | Codex |
@@ -128,7 +181,7 @@ ffmpeg -hide_banner -filters | grep -E "subtitles|drawtext"   # 两条都要有�
 | 脚本 | 干什么 | 典型命令 |
 |---|---|---|
 | `tools/bootstrap.py` | **入口**：`--doctor` 体检工具链 / 登录 / skills；给剧本则铺出项目骨架（入库 + 指纹 + 空 schema） | `python3 tools/bootstrap.py --doctor`<br>`python3 tools/bootstrap.py 剧本.txt` |
-| `tools/check_consistency.py` | **验收关**：引用完整性、编号规范、台词预算、字幕对齐、QA 十项等 R0–R20，零依赖 | `python3 tools/check_consistency.py --schema-dir <项目>/schema` |
+| `tools/check_consistency.py` | **验收关**：引用完整性、编号规范、台词预算、字幕对齐、QA 十项等 R0–R21，零依赖 | `python3 tools/check_consistency.py --schema-dir <项目>/schema` |
 | `tools/_project.py` | 项目定位：显式路径 > `projects/` 下唯一项目 > 报错列候选 | 被上面几个脚本 import |
 | `tools/make_srt.py` | `shots.csv` → SRT（时间轴跟实测音频，单行 ≤20 字折行） | `python3 tools/make_srt.py` |
 | `tools/tts_batch.py` | 按 `shots.csv` 台词 + `assets.json` 音色批量 TTS，回填 `audio_duration_s` | `python3 tools/tts_batch.py --dry-run` |
