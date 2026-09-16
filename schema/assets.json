@@ -1,7 +1,56 @@
 {
   "project_name": "状元是买的，但才华是真的",
   "updated_at": "",
-  "assets": [],
+  "assets": [
+    {
+      "asset_id": "CH-001",
+      "type": "character",
+      "name": "江小白",
+      "source": "generated",
+      "anchor_file": "project/work/assets/CH-001_v001.png",
+      "sha256": "6292004be0ed78c667fcc7a54fd03be4b606fa237ea39a068475b90c2b43a1d5",
+      "job_id": "232f747d-6df2-463a-a75a-59a3d2c67984",
+      "soul_reference_id": "",
+      "version": "v001",
+      "model": "nano_banana_pro",
+      "cost_credits": 2,
+      "status": "draft",
+      "created_at": "2026-09-16",
+      "review": "已自检：年龄感、发型、服装、腰束、体型均符合锚点。待作者过目定稿"
+    },
+    {
+      "asset_id": "EN-001",
+      "type": "environment",
+      "name": "镇北侯府·厅堂",
+      "source": "generated",
+      "anchor_file": "project/work/assets/EN-001_v001.png",
+      "sha256": "efc49902991ef9edf360d5ff09b8ea99946c1e1a7a7d8a9b1b4712197062f5e1",
+      "job_id": "52301695-9473-432a-afb0-1852c90044b3",
+      "soul_reference_id": "",
+      "version": "v001",
+      "model": "nano_banana_pro",
+      "cost_credits": 2,
+      "status": "draft",
+      "created_at": "2026-09-16",
+      "review": "已自检：青石地面、木柱、太师椅列、深红地毡、槅扇门窗、左上高位侧光与浮尘全部符合锚点。匾额为无字深色木牌（规避中文乱码），如需「镇北」二字建议后期叠加"
+    },
+    {
+      "asset_id": "ST-001",
+      "type": "style",
+      "name": "古装权谋爽剧 · 电影感写实",
+      "source": "generated",
+      "anchor_file": "project/work/assets/ST-001_v001.png",
+      "sha256": "da0d79c2853b189cd6c8a0a40e3b60d70c551378e64b571211fef1f73cd5a8e3",
+      "job_id": "b9344110-7e33-4df6-92ff-3c894a62cdd6",
+      "soul_reference_id": "",
+      "version": "v001",
+      "model": "nano_banana_pro",
+      "cost_credits": 2,
+      "status": "draft",
+      "created_at": "2026-09-16",
+      "review": "偏中性：木/石/织物/金属四块材质与左上硬光达标，但缺冷白刀光的高对比元素，背景剥落墙面引入了不属于本片的破败感。可用作材质与光位锚，若成片色调不统一则重生成 v002"
+    }
+  ],
   "voices": [],
   "notes": "由 S2 填写。source: generated=生成 | trained=训练得到 | imported=外部导入。规则：只追加不覆盖，每次生成新增一行。soul_reference_id 留空（Soul 训练需 Basic 以上套餐，当前未购买）。",
   "assets_field_reference": {

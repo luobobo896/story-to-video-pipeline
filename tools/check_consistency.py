@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import io
 import json
 import re
@@ -141,8 +142,9 @@ def run_checks(schema_dir: Path, draft: bool = False) -> tuple[list[str], list[s
         asset_ids.add(vid)
         voice_assets[vid] = v
 
-    known_ids = asset_ids | {c.get("id", "") for c in bible.get("characters", [])}
-    known_ids.discard("")
+    # 引用完整性只认 assets.json 里已登记的资产：story_bible 里定义了角色不等于资产已就绪。
+    # 否则分镜可以引用一个永远没有定妆图的角色，G2 闸门就被绕过了。
+    known_ids = set(asset_ids)
 
     scene_index: set[tuple[str, str]] = set()
     episode_ids: set[str] = set()
@@ -169,6 +171,22 @@ def run_checks(schema_dir: Path, draft: bool = False) -> tuple[list[str], list[s
         for aid, a in character_assets.items():
             if not a.get("anchor_file") and not a.get("soul_reference_id"):
                 errors.append(f"[R5] 角色 {aid} 既无 anchor_file 也无 soul_reference_id，无法锁定一致性")
+
+    # ── R12 定稿资产哈希核对 ─────────────────────────────────
+    project_root = schema_dir.parent
+    for a in assets_doc.get("assets", []):
+        aid = a.get("asset_id", "?")
+        anchor = a.get("anchor_file", "")
+        want = a.get("sha256", "")
+        if not anchor or not want:
+            continue
+        path = Path(anchor) if Path(anchor).is_absolute() else project_root / anchor
+        if not path.exists():
+            warnings.append(f"[R12] {aid} 的定稿图本地不存在：{anchor}（可能尚未下载或在另一台机器）")
+            continue
+        got = hashlib.sha256(path.read_bytes()).hexdigest()
+        if got != want:
+            errors.append(f"[R12] {aid} 的定稿图已变更：{anchor} 实际哈希 {got[:12]}… 与登记值 {want[:12]}… 不符")
 
     # ── 逐个镜头检查 ─────────────────────────────────────────
     seen_shot_ids: set[str] = set()
