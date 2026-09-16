@@ -30,6 +30,10 @@ QA_FIELDS = [
     "qa_spec", "qa_safe_area", "qa_continuity", "qa_physics", "qa_props",
 ]
 CONTINUITY_FIELDS = ["pose_start", "pose_end", "position_start", "position_end", "facing"]
+# rules/ME-009：时长 ≥4s 的镜头必须有足够节拍，否则必然匀速漂移（ME-001）
+MIN_BEATS_FOR_LONG_SHOT = 2
+LONG_SHOT_SECONDS = 4
+MIN_READABLE_FACE_SCALE = 10
 
 EPISODE_REQUIRED = ["episode_id", "scene_id", "location_env_id", "characters"]
 SHOT_REQUIRED = ["shot_id", "episode_id", "scene_id", "duration_s", "script_ref", "refs", "status"]
@@ -220,6 +224,28 @@ def run_checks(schema_dir: Path, draft: bool = False) -> tuple[list[str], list[s
             blank = [f for f in CONTINUITY_FIELDS if not s.get(f, "")]
             if blank:
                 warnings.append(f"[G3] {tag} 未标注 {'/'.join(blank)}，跨镜姿态与站位连续性没有依据")
+
+        # ── rules/ME-006 & ME-009 微表情可执行约束 ─────────────
+        beats_raw, scale_raw = s.get("micro_beats", ""), s.get("face_scale", "")
+        beats, scale = as_float(beats_raw), as_float(scale_raw)
+        dur_s = as_float(s.get("duration_s", ""))
+        if beats is None and s.get("status") not in ("", "todo"):
+            warnings.append(f"[ME-009] {tag} 已开工但未标注 micro_beats / face_scale")
+        elif beats is not None and scale is not None and dur_s is not None:
+            if scale < MIN_READABLE_FACE_SCALE and beats > 0:
+                (warnings if draft else errors).append(
+                    f"[ME-006] {tag} face_scale={scale:g}% 低于 {MIN_READABLE_FACE_SCALE}%，"
+                    f"微表情不可读，却标了 {beats:g} 个节拍")
+            elif scale >= MIN_READABLE_FACE_SCALE and dur_s >= LONG_SHOT_SECONDS and beats < MIN_BEATS_FOR_LONG_SHOT:
+                (warnings if draft else errors).append(
+                    f"[ME-009] {tag} 时长 {dur_s:g}s、face_scale={scale:g}% 但只有 {beats:g} 个节拍，"
+                    f"必然匀速漂移（ME-001），需拆到 ≥{MIN_BEATS_FOR_LONG_SHOT} 个")
+            elif scale < MIN_READABLE_FACE_SCALE and dur_s >= LONG_SHOT_SECONDS:
+                warnings.append(
+                    f"[ME-006] {tag} face_scale={scale:g}% 面部不可读，确认该镜确实不需要微表情")
+            if scale >= MIN_READABLE_FACE_SCALE and dur_s >= LONG_SHOT_SECONDS and beats > 3:
+                (warnings if draft else errors).append(
+                    f"[ME-008] {tag} 情绪节拍 {beats:g} 个超过硬上限 3 个，会被抹平")
 
         if s.get("status") == "done":
             bad = [f for f in QA_FIELDS if s.get(f, "") != "pass"]

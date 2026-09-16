@@ -80,7 +80,7 @@
 | `eyeline` | 视线落点（在看谁、在看什么） |
 | `action_start` / `action_end` | 动作起点与终点，用于首尾帧夹逼 |
 | `emotion_start` / `emotion_end` | 情绪起点与终点。**一镜只放一个主节拍** |
-| `micro_beats` | 本镜的微表情节拍数。规则：`duration_s ≥ 4` 时 `micro_beats ≥ 2`（否则必然匀速漂移）。判据见 [../docs/07-微表情与物理合理性规则.md](../docs/07-微表情与物理合理性规则.md) |
+| `micro_beats` | 本镜的微表情节拍数。规则 `ME-009`：`duration_s ≥ 4` 且 `face_scale ≥ 10` 时 `micro_beats ≥ 2`（否则必然匀速漂移）。判据见 [../rules/ME-表演与微表情.md](../rules/ME-表演与微表情.md) |
 | `face_scale` | 面部高度占画面高度的百分比。`< 10` 时微表情不可读，该镜不得标注情绪要求 |
 | `shot_size_z` | 景别 Z 编码（Z1 大特写 → Z9 大远景） |
 | `camera_move` | 运镜。**每镜最多双轴运动** |
