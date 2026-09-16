@@ -38,6 +38,20 @@
 
 **一句话优势**：可中断、可交接、可回溯、成本可算——「这一步做完没有」由脚本回答，不由记忆回答。
 
+**示例产出**（来自示例项目 [`projects/zhuangyuan-ep01`](projects/zhuangyuan-ep01/)，点图看大图）：
+
+| 角色定妆图（三视图） | 场景空镜（镇北侯府·厅堂） |
+|---|---|
+| <img src="projects/zhuangyuan-ep01/docs/images/01-character-sheet-CH001.jpg" width="420"> | <img src="projects/zhuangyuan-ep01/docs/images/02-scene-EN001.jpg" width="420"> |
+| **风格锚图**（材质板，统一全片调性） | **成片截帧**（9:16 分发版 demo） |
+| <img src="projects/zhuangyuan-ep01/docs/images/03-style-anchor-ST001.jpg" width="420"> | <img src="projects/zhuangyuan-ep01/docs/images/05-final-cut-9x16-demo.jpg" width="420"> |
+
+**G2 定妆关评审拼图**（4 张资产一次过目——人工验收关就停在这里，等作者拍板）：
+
+<img src="projects/zhuangyuan-ep01/docs/images/04-g2-review-sheet.jpg" width="720">
+
+> 这 5 张是 `tools/eye.py` 压到 ≤300KB 的看图版（共 724KB）；4–9MB 的原始 PNG 留在 `project/work/`，不入库。
+
 ---
 
 ## 一、系统环境（本机实测，2026-09-16）
