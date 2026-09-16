@@ -22,21 +22,9 @@
 4. **泄漏即撤销**：怀疑泄漏立刻 `higgsfield auth logout` 并在平台侧处理，而不是"先删 commit"。
 5. **额度与套餐**：`higgsfield account status` 查余额。本账号实测为 **basic 套餐**，Soul 训练可用；当前仍走定妆图路线，留作一致性升级手段。
 
-### 已实测的成本基线（CLI v1.1.25）
+### 成本与档位门槛
 
-| 操作 | 成本 |
-|---|---|
-| `z_image` 出图（16:9） | 0.15 积分 |
-| `gpt_image_2_5` / `nano_banana_2_lite` 出图 | 1 积分 |
-| `nano_banana_flash` 出图 | 1.5 积分 |
-| `nano_banana_pro` 出图 2k | **2 积分** |
-| `kling3_0_turbo` / `wan2_7` 视频 5s | 7.5 积分 |
-| `kling3_0` / `minimax_h3` 视频 5s | 10 积分 |
-| `seedance_2_0_mini` 视频 5s | 12.5 积分 |
-| `gemini_omni` 视频 5s | 15 积分 |
-| `seedance_2_0` 视频 5s 720p | 22.5 积分 |
-| `seedance_2_5` 视频 6s 720p | 39 积分 |
-| `seedance_2_5` 视频 6s 1080p | 54 积分 |
+**价格、档位门槛、单集最少积分，全部集中在 [10-account-plans-and-credits.md](10-account-plans-and-credits.md)**（用 `higgsfield generate cost` 实测，不花钱）。这里只留一条结论：能同时满足"多图参考 + 自带音频"的视频模型只有 `seedance_2_0` 与 `seedance_2_5`，其余便宜的模型要么不吃参考图数组、要么不出音。
 
 **注意**：`kling3_0` / `wan2_7` 虽然便宜，但**不接受多图参考数组**，会直接废掉一致性挂载策略，本片不使用。能同时满足"多图参考 + 自带音频"的只有 `seedance_2_0` 与 `seedance_2_5`。
 
@@ -48,16 +36,30 @@ Codex 的 skill 装在 `~/.codex/skills/<name>/`，插件形式的随插件市�
 
 | Skill | 来源 | 负责阶段 | 用途 | 必需性 |
 |---|---|---|---|---|
+| `novel-outline` | 社区 `eternityspring/shuohao-skills`（Apache-2.0） | S1（N1 / N4） | 小说 → 短剧大纲五件套：改编说明、人物表、爽点表、分集梗概、资产清单；14 道质量门由脚本硬查（角色分档上限、主场景上限随集数、爽点间隔 ≤3 集、每集钩子必填） | **强烈推荐** |
+| `novel-characters` | 同上 | S1 后半 + S2（N2 / N5 / N6） | 角色设定集：人物画像、形象提示词、**音色提示词**、角色设定图（吃 `outline.json` 的角色表） | **强烈推荐** |
+| `novel-art` | 同上 | S1 后半 + S2（N3 / N6） | 美术设定集：场景 + 叙事道具，含一致性锚点、光照与状态变体、尺度参照、无人无手白底提示词；11 道质量门 | **强烈推荐** |
+| `novel-script` | 同上 | S3（N7 的台词与节拍） | 剧本：场次 + 节拍流，**逐集时长按语速确定性折算**、钩子前 3 拍冷开场、台词本按角色聚合带音色提示词；10 道质量门 | **强烈推荐** |
+| `novel-storyboard` | 同上 | S3 / S4（N7 分镜 + N8 关键帧） | 分镜：段（一次生成 ≤15s）→ 分镜（2–5s 硬门）→ 分镜图；MiniMax H3 提示词逐字对账；17 道质量门 | **强烈推荐** |
 | `higgsfield-generate` | 官方插件 `higgsfield-ai/skills` | S2 / S4 / S5 / S6 | 出图、出视频、出音频、爆款评分，30+ 模型统一入口 | **必需** |
 | `ffmpeg-skill` | 社区 `kajisho5/ffmpeg-skill`（MIT，42 个工具） | S6 / S7 | **所有剪辑与交付**：裁剪、拼接、横转竖、字幕、响度、合规检查、QA 看图。装法 `npx ffmpeg-skill --codex` | **必需** |
 | `seedance-prompt-skill` | 社区 `MapleShaw/seedance2.0-prompt-skill`（MIT） | S3 | **运镜四维编码 Z/Y/X/F、25 格流水线、六套剪辑公式、短剧全案范例** | **强烈推荐** |
-| `create-storyboard-skill` | 社区 `TateZhouSiu`（MIT） | S3 | 连续性圣经、shot card、剪辑表、确定性脚手架脚本 | 可选 |
-| `cinematic-storyboard-skill` | 社区 `chaoka-wooji`（MIT） | S3 | 中文六模块金字塔（宏观→中观→微观→视觉设定→文生图→图生视频） | 可选 |
-| `h3-storyboard-skill` | 社区 `phileiny`（MIT） | S3 | 拆镜定律的实测依据（一镜一主节拍） | 建议阅读，不必安装 |
+| ~~`create-storyboard-skill`~~ / ~~`cinematic-storyboard-skill`~~ / ~~`h3-storyboard-skill`~~ | 社区 | — | 分镜类 skill 统一走 `novel-storyboard` 后**不再需要**（拆镜定律那篇仍值得读） | 不装 |
 | `higgsfield-youtube-thumbnail` | 官方插件 | S7 | 封面 / 首图 | 可选 |
 | `imagegen` | Codex 内置 | S2 | 位图生成与编辑 | 可选 |
 | `spreadsheets` / `excel-xlsx` | Codex 内置 | S3 / S7 | 分镜表、资产索引导出为 XLSX | 可选 |
 | `visualize` | Codex 内置 | S3 / S6 | 节奏曲线、时间线可视化 | 可选 |
+
+### shuohao-skills 与本地 schema 怎么对接（重要）
+
+它们的产物是独立的 `outline.json` / `cast.json` / `art.json` / `script.json` / `storyboard.json`，**不是本项目的 `schema/` 格式**。分工是：
+
+| 谁管什么 | 说明 |
+|---|---|
+| **shuohao-skills** | 前段**素材生产**：大纲、角色设定、美术设定、剧本、分镜——把"该有什么"想清楚，并自带脚本质量门 |
+| **本流水线** | **状态与验收**：场记台账 `schema/`、ID 与锚点锁定、引用完整性、QA 十项、验收关、剪辑与交付 |
+
+接法是**转录**：把它们的 json 落进 `schema/story_bible.json`、`episodes.csv`、`shots.csv`、`assets.json`，然后照常跑 `check_consistency.py`。转录时保留 `script_ref` 与 `refs` 的来源标记，别让两套编号各说各话（写一个一次性转录脚本，不要手抄）。
 
 本项目**不使用**的官方 skill 及其原因：
 
@@ -67,12 +69,21 @@ Codex 的 skill 装在 `~/.codex/skills/<name>/`，插件形式的随插件市�
 | `higgsfield-video-explainer` | 面向非写实解说片，与写实短剧不匹配 |
 | `higgsfield-brandkit` / `higgsfield-product-photoshoot` / `higgsfield-marketplace-cards` | 品牌与电商向，短剧不需要 |
 
-安装社区 skill（示例）：
+**本项目自建一个编排 skill**（其余全是现成的，不重复造）：
+
+| Skill | 位置 | 干什么 |
+|---|---|---|
+| `story-to-video` | `skills/story-to-video/`（软链到 `~/.codex/skills/`） | 编排层：丢进剧本后按 N0–N12 推进，管验收关与停机待审；规则仍以 `docs/` 与 `rules/` 为准，不复制 |
+
+安装与实测状态（一条命令体检：`python3 tools/bootstrap.py --doctor`）：
 
 ```bash
-git clone --depth 1 https://github.com/MapleShaw/seedance2.0-prompt-skill.git \
-  ~/.codex/skills/seedance-prompt-skill
+npx ffmpeg-skill --codex                                              # ✅ 已装
+ln -s ../seedance-prompt-skill ~/.agents/skills/seedance-prompt-skill # ✅ 已装（软链，避免分叉副本）
+ln -s <本仓库>/skills/story-to-video ~/.codex/skills/            # ✅ 已装
 ```
+
+完整清单（安装 / 注册 / 登录 / 验证 / 失败信号）见 [09-toolchain-setup.md](09-toolchain-setup.md)。
 
 ---
 
@@ -84,7 +95,7 @@ git clone --depth 1 https://github.com/MapleShaw/seedance2.0-prompt-skill.git \
 |---|---|---|---|
 | `higgsfield auth login` | S0 | 设备码登录（交互式） | 浏览器授权 |
 | `higgsfield account status` | S0 / 全程 | 余额与套餐级别 | 登录态 |
-| `higgsfield model list` / `model get <id>` | 全程 | **模型与参数的唯一真相源**，文档与 CLI 版本有滞后时以此为准 | 登录态 |
+| `higgsfield model list` / `model get <id>` | 全程 | **模型与参数的唯一口径（以 CLI 为准）**，文档与 CLI 版本有滞后时以此为准 | 登录态 |
 | `higgsfield upload create <file>` | S2 / S5 | 上传本地素材，拿到 upload id | 登录态 |
 | `higgsfield generate create <model> ... --wait --json` | S2 / S4 / S5 | 图 / 视频 / 音频生成（一次调用创建并阻塞到结束） | 登录态 |
 | `higgsfield generate workflow reframe` | S6 | 横转竖，产出抖音 9:16 分发版 | 登录态 |
@@ -106,11 +117,11 @@ git clone --depth 1 https://github.com/MapleShaw/seedance2.0-prompt-skill.git \
 |---|---|---|
 | `ffmpeg` / `ffprobe` | 8.1.2 | 拼接、裁剪、转码、混音、规格核对 |
 | `ffmpeg-full` | **9.0.1（必须另装）** | 字幕烧录、文字叠加、防抖。普通 `ffmpeg` formula **不含** libass/freetype/libvidstab，`brew install ffmpeg-full`，是 keg-only，调用前 `export PATH="/opt/homebrew/opt/ffmpeg-full/bin:$PATH"` |
-| `python3` | 3.14.6 | 校验器、批处理脚本 |
+| `python3` | 3.14.6 | 场记核对、批处理脚本 |
 | `jq` | 1.8.2 | JSON / CSV 查询与转换 |
 | `ImageMagick (magick)` | 7.1.2 | 图片规格统一、加水印、拼版 |
 | `git` | 2.39.5 | 文本资产版本管理 |
-| `higgsfield` CLI | **未安装** | S0 需先安装 |
+| `higgsfield` CLI | 1.1.25（**已安装**） | 全部生成类调用；`higgsfield model list` 是模型与参数的唯一口径（以 CLI 为准） |
 
 ---
 

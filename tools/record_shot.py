@@ -18,6 +18,9 @@ import io
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _project import resolve_schema_dir  # noqa: E402
+
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="回填某个镜头的字段")
@@ -25,10 +28,16 @@ def main() -> int:
     parser.add_argument("--set", action="append", default=[], metavar="KEY=VALUE",
                         help="要写入的字段，可重复")
     parser.add_argument("--schema-dir",
-                        default=str(Path(__file__).resolve().parent.parent / "schema"))
+                        default="", help="项目 schema 目录；不给则自动选中 projects/ 下唯一的项目")
     args = parser.parse_args()
 
-    path = Path(args.schema_dir) / "shots.csv"
+    schema_dir = resolve_schema_dir(args.schema_dir)
+    if schema_dir is None:
+        return 1
+    path = schema_dir / "shots.csv"
+    if not path.exists():
+        print(f"找不到 {path}", file=sys.stderr)
+        return 1
     lines = [ln for ln in path.read_text(encoding="utf-8").splitlines() if ln.strip()]
     rows = list(csv.reader(io.StringIO("\n".join(lines))))
     header, data = rows[0], rows[1:]

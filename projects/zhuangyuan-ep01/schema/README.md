@@ -1,8 +1,8 @@
 # schema/ 字段字典
 
-这四个文件是**唯一真相源**。任何 Agent、任何一次重开对话，都先读这里，不靠上下文记忆。
+这四个文件是**场记台账**。任何 Agent、任何一次重开对话，都先读这里，不靠上下文记忆。
 
-除 `story_bible.json` 与 `assets.json` 是 JSON，其余两张表是 CSV（带表头，空行与 `#` 开头行会被校验器忽略）。多值字段（`refs`、`characters`）用分号 `;` 分隔。
+除 `story_bible.json` 与 `assets.json` 是 JSON，其余两张表是 CSV（带表头，空行与 `#` 开头行会被场记核对忽略）。多值字段（`refs`、`characters`）用分号 `;` 分隔。
 
 ---
 
@@ -16,8 +16,12 @@
 | `meta.aspect_ratio` | 制作母版画幅，本项目固定 `16:9` |
 | `meta.delivery_aspect_ratio` | 分发画幅，抖音用 `9:16` |
 | `meta.derivation_notes` | 项目名 / 集数 / 单集时长的**推导依据**，用于复核与推翻 |
+| `meta.theme` | **题材与时代**：`genre_primary` / `genre_tags[]` / `era_main` / `era_cross` / `costume_direction` / `tone` / `evidence[]`。`evidence` 是剧本原文出处；`era_*` 必须能在 `timeline[].label` 里找到对应时间线（场记核对 R13）。风格锚与提示词的用词都从这里推导，不再各写各的 |
+| `meta.inputs_from_author` | **作者指定的固定参数**（画幅、平台、语言、总集数），与"从剧本推导出来的值"分开放，避免混淆来源 |
 | `characters[].id` | `CH-###` |
 | `characters[].appearance_anchors` | **3–6 条可被图像检验的外观特征**，是定妆图的验收标准 |
+| `characters[].asset_level` | `full`（定妆图三视图）/ `silhouette`（只需一张逆光剪影，不做五官）/ `none`（不建资产，用道具代指）。决定 S2 的验收标准，也决定 `refs` 里挂什么 |
+| `characters[].voice_need` | 音色海选的依据：性别 / 年龄感 / 气质。由 S1 产出，S2 选音色时用；不写就只能靠音色名字猜，而 `higgsfield voices list` 的 113 个预设音色只有 id 与名字、没有任何语言性别年龄元数据（见 rules/VD-005） |
 | `characters[].identity_mode` | `fictional`（定妆图三视图锁定，本项目全部角色）/ `soul`（真人脸训练，需 Basic 以上套餐） |
 | `characters[].voice_id` | 指向 `assets.json.voices[].asset_id` |
 | `props[].id` | `PR-###` |
@@ -43,7 +47,7 @@
 | `assets[].soul_reference_id` | 真人脸训练返回的 `reference_id` |
 | `assets[].version` | `v001` 起递增。**只追加，不覆盖** |
 | `voices[].asset_id` | `VC-###` |
-| `voices[].character_id` | 绑定到哪个角色；一个角色只能绑一个音色（校验器会查） |
+| `voices[].character_id` | 绑定到哪个角色；一个角色只能绑一个音色（场记核对会查） |
 | `voices[].voice_id` / `voice_type` / `engine_variant` | 来自 `higgsfield voices list` |
 
 ## 3. episodes.csv
@@ -72,7 +76,7 @@
 | `shot_no` | 本场内序号 |
 | `duration_s` | 时长。2–4s 插入 / 反应，4–7s 明确动作，8–12s 持续表演 |
 | `aspect_ratio` | 画幅 |
-| `script_ref` | **必填**，指回剧本；校验器强制 100% 覆盖 |
+| `script_ref` | **必填**，指回剧本；场记核对强制 100% 覆盖 |
 | `description` | 画面内容一句话 |
 | `pose_start` / `pose_end` | 人物姿态起止（坐 / 站 / 跪 / 躺 / 蹲 / 趴）。**一镜只允许一次姿态转换** |
 | `position_start` / `position_end` | 画内位置起止，用绝对描述（"画面左侧 1/3"），禁止"旁边""对面" |
@@ -80,7 +84,7 @@
 | `eyeline` | 视线落点（在看谁、在看什么） |
 | `action_start` / `action_end` | 动作起点与终点，用于首尾帧夹逼 |
 | `emotion_start` / `emotion_end` | 情绪起点与终点。**一镜只放一个主节拍** |
-| `micro_beats` | 本镜的微表情节拍数。规则 `ME-009`：`duration_s ≥ 4` 且 `face_scale ≥ 10` 时 `micro_beats ≥ 2`（否则必然匀速漂移）。判据见 [../rules/ME-表演与微表情.md](../rules/ME-表演与微表情.md) |
+| `micro_beats` | 本镜的微表情节拍数。规则 `ME-009`：`duration_s ≥ 4` 且 `face_scale ≥ 10` 时 `micro_beats ≥ 2`（否则必然匀速漂移）。判据见 [../rules/ME-performance-and-micro-expressions.md](../../../rules/ME-performance-and-micro-expressions.md) |
 | `face_scale` | 面部高度占画面高度的百分比。`< 10` 时微表情不可读，该镜不得标注情绪要求 |
 | `shot_size_z` | 景别 Z 编码（Z1 大特写 → Z9 大远景） |
 | `camera_move` | 运镜。**每镜最多双轴运动** |
@@ -97,7 +101,7 @@
 | `audio_duration_s` | 实测音频时长，不得超过 `duration_s` |
 | `audio_file` / `clip_file` | 产物路径 |
 | `status` | `todo` / `wip` / `done` / `regen` |
-| `qa_identity` … `qa_props` | 视觉十项，取值 `pass` / `fail` / 空。`status=done` 时十项必须全 `pass`。判据见 [../docs/06-连贯性与物理合理性检查清单.md](../docs/06-连贯性与物理合理性检查清单.md) |
+| `qa_identity` … `qa_props` | 视觉十项，取值 `pass` / `fail` / 空。`status=done` 时十项必须全 `pass`。判据见 [../docs/06-continuity-and-physics-checklist.md](../../../docs/06-continuity-and-physics-checklist.md) |
 | `refs` 中的主体 | 必须落在**中心安全区**内，保证 16:9 横转 9:16 时不被裁掉 |
 | `version` | 通过的版本号，如 `v002` |
 | `updated_at` | 最后更新时间 |
@@ -107,5 +111,5 @@
 ## 新增一个镜头的最小流程
 
 1. 在 `episodes.csv` 确认它所属的 `episode_id` / `scene_id` 已存在。
-2. 在 `shots.csv` 追加一行：`shot_id` 按规则编号，`script_ref` 填剧本出处，`refs` 填已定稿资产，并填齐 `pose_*` / `position_*` / `facing` / `props_in_frame` / `physics_note`。含角色的镜头缺少连续性字段时校验器会告警。
+2. 在 `shots.csv` 追加一行：`shot_id` 按规则编号，`script_ref` 填剧本出处，`refs` 填已定稿资产，并填齐 `pose_*` / `position_*` / `facing` / `props_in_frame` / `physics_note`。含角色的镜头缺少连续性字段时场记核对会告警。
 3. 跑 `python3 tools/check_consistency.py`，直到 0 错误再开始生成。

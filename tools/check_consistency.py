@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""短剧流水线一致性校验器（零依赖，仅标准库）。
+"""影视制作流水线场记核对（连戏与过片检查；零依赖，仅标准库）。
 
-它把 docs/04-风险与校验点.md 里的阶段闸门变成可执行检查：
+它把 docs/04-risks-and-verification-gates.md 里的验收关变成可执行检查：
 
-    python3 tools/check_consistency.py              # 校验默认的 ./schema
+    python3 tools/check_consistency.py              # 场记核对：默认选中 projects/ 下唯一的项目
     python3 tools/check_consistency.py --json       # 机器可读
     python3 tools/check_consistency.py --selftest   # 自检：确认它真的能抓到错误
 
@@ -24,6 +24,9 @@ import sys
 import tempfile
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _project import resolve_schema_dir  # noqa: E402  （同目录小工具，零依赖）
+
 SHOT_ID_RE = re.compile(r"^EP\d{2}-SC\d{2}-SH\d{3}$")
 ASSET_ID_RE = re.compile(r"^(CH|PR|EN|WD|ST|VC)-\d{3}$")
 QA_FIELDS = [
@@ -35,9 +38,24 @@ CONTINUITY_FIELDS = ["pose_start", "pose_end", "position_start", "position_end",
 MIN_BEATS_FOR_LONG_SHOT = 2
 LONG_SHOT_SECONDS = 4
 MIN_READABLE_FACE_SCALE = 10
+# rules/PH-011 & ME-010：受击类镜头必须把受力链写进提示词，且情绪不得反向
+IMPACT_RE = re.compile(r"踢|踹|撞|砸|击飞|打飞|抽飞|抛掷|摔")
+IMPACT_CHAIN_WORDS = [
+    "受力", "惯性", "滞后", "加速", "下坠", "撞停", "停住", "滑行",
+    "减速", "扬尘", "尘土", "碎屑", "重心", "衣袍", "变形",
+]
+MIN_IMPACT_CHAIN_HITS = 2
+POSITIVE_EMOTIONS = ["笑", "高兴", "开心", "欣喜", "愉悦", "得意", "轻松", "从容", "淡定", "满足"]
+STARTED_STATUSES = ("wip", "done", "regen")
+# rules/VD-002：台词时长预算。分镜阶段用字数估，配音之后以实测音频为准（VD-003）
+CHARS_PER_SECOND = 4.4
+DIALOGUE_LEAD_S = 0.5
+MAX_Z_RUN = 3
 
 EPISODE_REQUIRED = ["episode_id", "scene_id", "location_env_id", "characters"]
 SHOT_REQUIRED = ["shot_id", "episode_id", "scene_id", "duration_s", "script_ref", "refs", "status"]
+
+OS_MARK_RE = re.compile(r"【[^】]*】|\s")
 
 
 def read_csv_rows(path: Path) -> list[dict[str, str]]:
@@ -85,7 +103,7 @@ def probe_dims(path: Path) -> tuple[int, int]:
 
 
 def check_delivery(project_root: Path, shots: list[dict[str, str]], draft: bool) -> tuple[list[str], list[str]]:
-    """按 rules/COMP-成片核心要素.md 审计交付完整性。"""
+    """按 rules/COMP-core-elements.md 审计交付完整性。"""
     errors: list[str] = []
     warnings: list[str] = []
     delivery = project_root / "project/delivery"
@@ -207,6 +225,133 @@ def as_float(value: str) -> float | None:
         return None
 
 
+def dialogue_chars(text: str) -> int:
+    """台词的配音字数：去掉【内心OS】这类标记与空白，标点计入（配音会在标点处停顿）。"""
+    return len(OS_MARK_RE.sub("", text or ""))
+
+
+def check_theme(bible: dict, draft: bool = False) -> tuple[list[str], list[str]]:
+    """R13：题材与时代必须是显式字段，且能指回剧本与时间线。
+
+    缺了它，换一个剧本就得在对话里重新判断一遍，28 条提示词里的
+    "古装写实电影质感" 也没有可追溯的来源。
+    """
+    errors: list[str] = []
+    warnings: list[str] = []
+    theme = (bible.get("meta") or {}).get("theme") or {}
+    for key in ("genre_primary", "era_main"):
+        if not theme.get(key):
+            errors.append(f"[R13] meta.theme.{key} 缺失：题材与时代必须显式识别并记入台账")
+    if not theme.get("evidence"):
+        errors.append("[R13] meta.theme.evidence 为空：题材 / 时代的判断必须给出剧本出处")
+    labels = " ".join(t.get("label", "") for t in bible.get("timeline", []))
+    for key in ("era_main", "era_cross"):
+        era = theme.get(key) or ""
+        if era and labels and era not in labels:
+            errors.append(f"[R13] meta.theme.{key}=「{era}」在 timeline[] 里找不到对应时间线，题材的时代与时间线自相矛盾")
+    if theme and not theme.get("costume_direction"):
+        warnings.append("[R13] meta.theme.costume_direction 为空：服装考据方向没有定，人物资产会各自发挥")
+    if draft:
+        # S0 刚铺完骨架时 N1 还没跑，草稿模式只提示不拦
+        warnings.extend(errors)
+        errors = []
+    return errors, warnings
+
+
+def check_sequence(episodes: list[dict], shots: list[dict], meta: dict) -> tuple[list[str], list[str]]:
+    """R17–R20：跨镜头的结构性约束（场次自洽、节奏、姿态衔接）。"""
+    errors: list[str] = []
+    warnings: list[str] = []
+
+    # ── R17 分集表与实际分镜必须自洽 ─────────────────────────
+    for e in episodes:
+        ep, sc = e.get("episode_id", ""), e.get("scene_id", "")
+        rows = [s for s in shots if s.get("episode_id") == ep and s.get("scene_id") == sc]
+        declared = as_float(e.get("shot_count", ""))
+        if declared is not None and declared != len(rows):
+            errors.append(f"[R17] {ep}/{sc} 声明 {declared:g} 个镜头，shots.csv 里实际 {len(rows)} 个")
+        est = as_float(e.get("est_duration_s", ""))
+        real = sum(as_float(s.get("duration_s", "")) or 0.0 for s in rows)
+        if est is not None and abs(est - real) > 0.05:
+            errors.append(f"[R17] {ep}/{sc} 预估 {est:g}s，镜头时长合计 {real:g}s，分集表与分镜不同步")
+
+    target = as_float((meta or {}).get("episode_duration_target_s", ""))
+    for ep in sorted({s.get("episode_id", "") for s in shots if s.get("episode_id")}):
+        real = sum(as_float(s.get("duration_s", "")) or 0.0
+                   for s in shots if s.get("episode_id") == ep)
+        if target and real and abs(real - target) > 0.1 * target:
+            errors.append(
+                f"[R17] {ep} 镜头合计 {real:g}s 与 meta 目标 {target:g}s 偏差 "
+                f"{abs(real - target) / target * 100:.1f}%，超过 G3 的 10%："
+                f"改分镜，或改 episode_duration_target_s 并在 derivation_notes 写明依据")
+
+    # ── 按集分组，检查镜头之间的节奏与衔接 ──────────────────
+    episodes_in_order: list[str] = []
+    for s in shots:
+        ep = s.get("episode_id", "")
+        if ep and ep not in episodes_in_order:
+            episodes_in_order.append(ep)
+    for ep in episodes_in_order:
+        rows = [s for s in shots if s.get("episode_id") == ep]
+
+        # R18 景别节奏：不得连续 MAX_Z_RUN 镜同 Z（docs/01 S3）
+        run, prev = 0, ""
+        for s in rows:
+            z = s.get("shot_size_z", "")
+            run = run + 1 if (z and z == prev) else (1 if z else 0)
+            prev = z
+            if run >= MAX_Z_RUN:
+                errors.append(f"[R18] {s.get('shot_id', '?')} 起连续 {run} 镜都是 {z}，景别节奏塌了（docs/01 S3）")
+
+        # R20 同一批出镜角色的相邻镜头，姿态必须接得上（风险 R-20）
+        for a, b in zip(rows, rows[1:]):
+            if not a.get("refs") or a.get("refs") != b.get("refs"):
+                continue
+            pe, ps = a.get("pose_end", ""), b.get("pose_start", "")
+            if pe and ps and pe != ps:
+                errors.append(
+                    f"[R20] {a.get('shot_id', '?')} 结束在「{pe}」，下一镜 {b.get('shot_id', '?')} "
+                    f"却从「{ps}」开始：同一批出镜角色、站位未变，姿态不允许突变")
+    return errors, warnings
+
+
+def check_subtitle(project_root: Path, shots: list[dict]) -> list[str]:
+    """R16：字幕已经生成时，必须与 shots.csv 保持同步（VD-003 / VD-004）。"""
+    errors: list[str] = []
+    srts = sorted((project_root / "project/work/edit").glob("EP*.srt")) \
+        + sorted((project_root / "project/delivery").glob("*.srt"))
+    if not srts:
+        return errors
+    srt = srts[-1]
+    text = srt.read_text(encoding="utf-8", errors="ignore")
+    m = re.search(r"(EP\d{2})", srt.name)
+    episode = m.group(1) if m else ""
+    # 字幕的起始时间 = 该镜之前所有镜头 duration 的累加（make_srt.py 的口径）
+    expected: list[tuple[str, float]] = []
+    cursor = 0.0
+    for s in (x for x in shots if not episode or x.get("episode_id") == episode):
+        dur = as_float(s.get("duration_s", ""))
+        if (s.get("dialogue") or "").strip():
+            expected.append((s.get("shot_id", "?"), cursor))
+        cursor += dur or 0.0
+
+    cues = re.findall(
+        r"(\d{2}):(\d{2}):(\d{2}),(\d{3})\s*-->\s*(\d{2}):(\d{2}):(\d{2}),(\d{3})", text)
+    if len(cues) != len(expected):
+        errors.append(
+            f"[R16] {srt.name} 有 {len(cues)} 条字幕，shots.csv 里有台词的镜头是 {len(expected)} 个："
+            f"字幕与分镜不同步，重跑 python3 tools/make_srt.py")
+        return errors
+    for (sid, want), cue in zip(expected, cues):
+        h, m, sec, ms = (int(x) for x in cue[:4])
+        got = h * 3600 + m * 60 + sec + ms / 1000
+        if abs(got - want) > 0.05:
+            errors.append(
+                f"[R16] {srt.name} 里 {sid} 的字幕起始 {got:.2f}s，按分镜应为 {want:.2f}s"
+                f"（差 {abs(got - want):.2f}s）：改过 shots.csv 就必须重跑 python3 tools/make_srt.py")
+    return errors
+
+
 def run_checks(schema_dir: Path, draft: bool = False) -> tuple[list[str], list[str]]:
     errors: list[str] = []
     warnings: list[str] = []
@@ -222,6 +367,11 @@ def run_checks(schema_dir: Path, draft: bool = False) -> tuple[list[str], list[s
     for name, doc in (("story_bible.json", bible), ("assets.json", assets_doc)):
         if not doc:
             errors.append(f"[R0] 缺少或无法解析 {name}")
+
+    # ── R13 题材与时代 ───────────────────────────────────────
+    theme_errors, theme_warnings = check_theme(bible, draft)
+    errors.extend(theme_errors)
+    warnings.extend(theme_warnings)
 
     # ── R0 必需列 ─────────────────────────────────────────────
     if episodes:
@@ -260,7 +410,7 @@ def run_checks(schema_dir: Path, draft: bool = False) -> tuple[list[str], list[s
         voice_assets[vid] = v
 
     # 引用完整性只认 assets.json 里已登记的资产：story_bible 里定义了角色不等于资产已就绪。
-    # 否则分镜可以引用一个永远没有定妆图的角色，G2 闸门就被绕过了。
+    # 否则分镜可以引用一个永远没有定妆图的角色，G2 定妆关就被绕过了。
     known_ids = set(asset_ids)
 
     scene_index: set[tuple[str, str]] = set()
@@ -306,6 +456,8 @@ def run_checks(schema_dir: Path, draft: bool = False) -> tuple[list[str], list[s
             errors.append(f"[R12] {aid} 的定稿图已变更：{anchor} 实际哈希 {got[:12]}… 与登记值 {want[:12]}… 不符")
 
     # ── 逐个镜头检查 ─────────────────────────────────────────
+    # R21 用的白名单：账号档位允许的视频模型（docs/10 第二节）
+    allowed_models = ((bible.get("meta") or {}).get("account") or {}).get("allowed_video_models") or []
     seen_shot_ids: set[str] = set()
     for s in shots:
         sid = s.get("shot_id", "")
@@ -329,6 +481,45 @@ def run_checks(schema_dir: Path, draft: bool = False) -> tuple[list[str], list[s
             vid = s.get("voice_id", "")
             if vid and vid not in known_ids:
                 errors.append(f"[R2] {tag} 的 voice_id 不存在：{vid}")
+
+        # ── R15 音色归属：台词、出镜角色、音色三者必须对得上 ────
+        ref_cids = [rid for rid in split_ids(s.get("refs", "")) if rid.startswith("CH-")]
+        sid_voice = s.get("voice_id", "")
+        has_dialogue = bool((s.get("dialogue") or "").strip())
+        if has_dialogue and not sid_voice:
+            errors.append(f"[R15] {tag} 有台词却没有 voice_id：配音与口型都无从绑定")
+        if sid_voice and not has_dialogue:
+            warnings.append(f"[R15] {tag} 没有台词却填了 voice_id（{sid_voice}），语义不明，建议清空")
+        if sid_voice and not draft:
+            voiced_cid = (voice_assets.get(sid_voice) or {}).get("character_id", "")
+            if voiced_cid and ref_cids and voiced_cid not in ref_cids:
+                errors.append(
+                    f"[R15] {tag} 的 voice_id {sid_voice} 属于 {voiced_cid}，"
+                    f"但本镜出场角色是 {'/'.join(ref_cids)}——台词挂错了人")
+
+        # ── R19 风格锚必须挂载（docs/02 第五节）────────────────
+        style = s.get("style_id", "")
+        if not style:
+            errors.append(f"[R19] {tag} 没有 style_id：风格锚缺失，色调会随镜头漂")
+        elif style not in split_ids(s.get("refs", "")):
+            errors.append(f"[R19] {tag} 的 refs 里没有挂载风格锚 {style}")
+
+        # ── R21 模型必须在当前账号档位可用（docs/10 第二节）────
+        model = s.get("model", "")
+        if not draft and allowed_models and model and model not in allowed_models:
+            errors.append(
+                f"[R21] {tag} 指定了 {model}，但账号档位只允许 {'/'.join(allowed_models)}："
+                f"换档位内可用的模型，或升级套餐后同步 meta.account（docs/10）")
+
+        # ── R14 台词预算：分镜阶段就该拦下来（VD-002）───────────
+        if has_dialogue and not (s.get("audio_duration_s") or "").strip():
+            chars_n = dialogue_chars(s.get("dialogue", ""))
+            need = chars_n / CHARS_PER_SECOND + DIALOGUE_LEAD_S
+            planned = as_float(s.get("duration_s", ""))
+            if planned is not None and planned < need:
+                errors.append(
+                    f"[R14] {tag} 台词 {chars_n} 字，配音预算需 ≥{need:.1f}s，"
+                    f"镜头只给了 {planned:g}s——拆镜 / 精简台词 / 延长镜头三选一（VD-002），不要靠提速硬塞")
 
         if not s.get("script_ref", ""):
             errors.append(f"[R6] {tag} 缺少 script_ref，无法回溯到剧本")
@@ -360,6 +551,25 @@ def run_checks(schema_dir: Path, draft: bool = False) -> tuple[list[str], list[s
                 (warnings if draft else errors).append(
                     f"[ME-008] {tag} 情绪节拍 {beats:g} 个超过硬上限 3 个，会被抹平")
 
+        # ── rules/PH-011 & ME-010 受击镜头的受力链与情绪极性 ────
+        if s.get("status") in STARTED_STATUSES:
+            action_text = f"{s.get('action_start', '')} {s.get('action_end', '')} {s.get('description', '')}"
+            if IMPACT_RE.search(action_text):
+                emo = f"{s.get('emotion_start', '')}/{s.get('emotion_end', '')}"
+                bad_emo = [w for w in POSITIVE_EMOTIONS if w in emo]
+                if bad_emo:
+                    errors.append(
+                        f"[ME-010] {tag} 是受击镜头，情绪却写成 {'/'.join(bad_emo)}："
+                        f"受击必须与受力同相（震惊/剧痛/咬牙），不能是正向情绪")
+                elif not (s.get("emotion_start", "").strip() and s.get("emotion_end", "").strip()):
+                    errors.append(f"[ME-010] {tag} 是受击镜头，却没有写 emotion_start/end")
+                hits = [w for w in IMPACT_CHAIN_WORDS if w in (s.get("prompt_zh") or "")]
+                if len(hits) < MIN_IMPACT_CHAIN_HITS:
+                    (warnings if draft else errors).append(
+                        f"[PH-011] {tag} 受击镜头的 prompt_zh 没写受力链："
+                        f"受力点/惯性滞后/加速下坠/撞停/滑行/扬尘 只命中 {len(hits)} 项，"
+                        f"要求 ≥{MIN_IMPACT_CHAIN_HITS}（尾缀模板见 docs/06 第 2 层）")
+
         if s.get("status") == "done":
             bad = [f for f in QA_FIELDS if s.get(f, "") != "pass"]
             if bad:
@@ -381,11 +591,26 @@ def run_checks(schema_dir: Path, draft: bool = False) -> tuple[list[str], list[s
         if cid in char_to_voice and char_to_voice[cid] != vid:
             errors.append(f"[R11] 角色 {cid} 绑定了多个音色：{char_to_voice[cid]} / {vid}")
         char_to_voice[cid] = vid
+        # R15：音色是角色资产的一部分。角色定妆图还没登记就先绑音色，等于让 G2 定妆关形同虚设
+        if not draft and cid not in character_assets:
+            errors.append(
+                f"[R15] 音色 {vid} 绑定的角色 {cid} 在 assets.json 里没有角色资产"
+                f"（无 anchor_file）：先定稿角色，再绑音色")
+
+    # ── R16–R20 跨镜头约束 ──────────────────────────────────
+    seq_errors, seq_warnings = check_sequence(episodes, shots, bible.get("meta") or {})
+    errors.extend(seq_errors)
+    warnings.extend(seq_warnings)
+    errors.extend(check_subtitle(schema_dir.parent, shots))
 
     # ── 软性问题只警告 ───────────────────────────────────────
     for c in bible.get("characters", []):
         if c.get("status") == "mentioned":
             continue  # 未出场角色（仅台词提及）不需要外观锚点
+        if c.get("asset_level") not in ("full", "silhouette", "none"):
+            warnings.append(
+                f"[G1] 角色 {c.get('id', '?')} 未标 asset_level（full / silhouette / none）："
+                f"剪影级与完整级资产的验收标准不同，不标就只能按最严的标准要求")
         anchors = c.get("appearance_anchors") or []
         if len(anchors) < 3:
             warnings.append(f"[G1] 角色 {c.get('id', '?')} 的外观锚点少于 3 条，容易被模型漂")
@@ -398,8 +623,11 @@ def run_checks(schema_dir: Path, draft: bool = False) -> tuple[list[str], list[s
 
 def _write_fixture(d: Path, broken: bool) -> None:
     bible = {
-        "meta": {"project_name": "selftest"},
-        "characters": [{"id": "CH-001", "name": "甲",
+        "meta": {"project_name": "selftest",
+                 "theme": {"genre_primary": "古装", "era_main": "大华王朝",
+                           "costume_direction": "古装写实", "evidence": ["首行"]}},
+        "timeline": [{"id": "TL-001", "label": "大华王朝 · 当下"}],
+        "characters": [{"id": "CH-001", "name": "甲", "asset_level": "full",
                         "appearance_anchors": ["a", "b", "c"]}],
         "open_questions": [],
     }
@@ -408,6 +636,7 @@ def _write_fixture(d: Path, broken: bool) -> None:
             {"asset_id": "CH-001", "type": "character", "anchor_file": "x.png",
              "soul_reference_id": ""},
             {"asset_id": "EN-001", "type": "environment", "anchor_file": "y.png"},
+            {"asset_id": "ST-001", "type": "style", "anchor_file": "z.png"},
         ],
         "voices": [{"asset_id": "VC-001", "character_id": "CH-001"}],
     }
@@ -416,15 +645,16 @@ def _write_fixture(d: Path, broken: bool) -> None:
         "characters,est_duration_s,shot_count,status,notes\n"
         "EP01,试播,SC01,开场,1-10,EN-001,CH-001,10,2,todo,\n"
     )
-    bad_ref = "PR-099" if broken else "CH-001"
+    bad_ref = "CH-001;EN-001;ST-001;PR-099" if broken else "CH-001;EN-001;ST-001"
     all_pass = ",".join("pass" for _ in QA_FIELDS)
     blank_qa = ",".join("" for _ in QA_FIELDS)
     shots = (
         "shot_id,episode_id,scene_id,shot_no,duration_s,script_ref,refs,status,"
-        + ",".join(CONTINUITY_FIELDS) + ","
+        + ",".join(CONTINUITY_FIELDS) + ",style_id,dialogue,audio_duration_s,model,"
         + ",".join(QA_FIELDS) + "\n"
-        f"EP01-SC01-SH001,EP01,SC01,1,5,1-5,{bad_ref},todo,坐,坐,画面左,画面左,正面,{blank_qa}\n"
-        f"EP01-SC01-SH002,EP01,SC01,2,5,6-10,CH-001,done,站,站,画面中,画面中,四分之三侧,{all_pass}\n"
+        f"EP01-SC01-SH001,EP01,SC01,1,5,1-5,{bad_ref},todo,坐,坐,画面左,画面左,正面,ST-001,,,,{blank_qa}\n"
+        f"EP01-SC01-SH002,EP01,SC01,2,5,6-10,CH-001;EN-001;ST-001,done,"
+        f"坐,站,画面中,画面中,四分之三侧,ST-001,,,,{all_pass}\n"
     )
     (d / "story_bible.json").write_text(json.dumps(bible, ensure_ascii=False), encoding="utf-8")
     (d / "assets.json").write_text(json.dumps(assets, ensure_ascii=False), encoding="utf-8")
@@ -451,34 +681,85 @@ def selftest() -> int:
         if any("PR-099" in e for e in draft_errors):
             print("自检失败：草稿模式不应检查资产引用。")
             return 1
+        _write_fixture(d, broken=False)
+        bible_no_theme = json.loads((d / "story_bible.json").read_text(encoding="utf-8"))
+        del bible_no_theme["meta"]["theme"]
+        (d / "story_bible.json").write_text(
+            json.dumps(bible_no_theme, ensure_ascii=False), encoding="utf-8")
+        theme_errors, _ = run_checks(d)
+        if not any("meta.theme.genre_primary" in e for e in theme_errors):
+            print("自检失败：题材 / 时代缺失没有被抓到。")
+            return 1
+        _write_fixture(d, broken=False)
+
+        # R14：有台词、还没配音，镜头装不下台词
+        p = d / "shots.csv"
+        lines = p.read_text(encoding="utf-8").splitlines()
+        header = next(csv.reader(io.StringIO(lines[0])))
+        row = next(csv.reader(io.StringIO(lines[1])))
+        row[header.index("dialogue")] = "他前世好歹也是文科博士，把这件事做实就好，先把局面稳住再说"
+        lines[1] = ",".join(row)
+        p.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        budget_errors, _ = run_checks(d)
+        if not any("[R14]" in e for e in budget_errors):
+            print("自检失败：台词超出镜头时长没有被抓到。")
+            return 1
+
+        # R20：同一批出镜角色的相邻镜头姿态突变
+        _write_fixture(d, broken=False)
+        p = d / "shots.csv"
+        p.write_text(p.read_text(encoding="utf-8").replace(",坐,站,", ",站,站,"),
+                     encoding="utf-8")
+        pose_errors, _ = run_checks(d)
+        if not any("[R20]" in e for e in pose_errors):
+            print("自检失败：相邻镜头姿态突变没有被抓到。")
+            return 1
+
+        # R21：模型超出账号档位可用范围
+        _write_fixture(d, broken=False)
+        p = d / "story_bible.json"
+        bible = json.loads(p.read_text(encoding="utf-8"))
+        bible["meta"]["account"] = {"allowed_video_models": ["seedance_2_0_mini"]}
+        p.write_text(json.dumps(bible, ensure_ascii=False), encoding="utf-8")
+        lines = (d / "shots.csv").read_text(encoding="utf-8").splitlines()
+        header = next(csv.reader(io.StringIO(lines[0])))
+        row = next(csv.reader(io.StringIO(lines[1])))
+        row[header.index("model")] = "seedance_2_5"
+        lines[1] = ",".join(row)
+        (d / "shots.csv").write_text("\n".join(lines) + "\n", encoding="utf-8")
+        model_errors, _ = run_checks(d)
+        if not any("[R21]" in e for e in model_errors):
+            print("自检失败：超出账号档位的模型没有被抓到。")
+            return 1
+
+        _write_fixture(d, broken=False)
         with (d / "shots.csv").open("a", encoding="utf-8") as f:
             f.write("EP01-SC01-SH003,EP01,SC01,3\n")
         shape_errors, _ = run_checks(d)
         if not any("列会错位" in e for e in shape_errors):
             print("自检失败：列数错位没有被抓到。")
             return 1
-    print("自检通过：干净数据 0 错误；坏引用、草稿模式、列错位三项行为正确。")
+    print("自检通过：干净数据 0 错误；坏引用、草稿模式、题材缺失、台词超时、姿态突变、模型越档、列错位七项行为正确。")
     return 0
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="短剧流水线一致性校验器")
-    parser.add_argument("--schema-dir", default=str(Path(__file__).resolve().parent.parent / "schema"),
-                        help="schema 目录，默认 <项目根>/schema")
+    parser = argparse.ArgumentParser(description="影视制作流水线场记核对")
+    parser.add_argument("--schema-dir", default="",
+                        help="项目 schema 目录；不给则自动选中 projects/ 下唯一的项目")
     parser.add_argument("--json", action="store_true", help="输出 JSON")
     parser.add_argument("--selftest", action="store_true", help="自检校验器本身")
     parser.add_argument("--draft", action="store_true",
                         help="草稿模式：跳过资产存在性检查，允许先出分镜稿再补资产")
     parser.add_argument("--delivery", action="store_true",
-                        help="额外按 rules/COMP-成片核心要素.md 审计交付完整性")
+                        help="额外按 rules/COMP-core-elements.md 审计交付完整性")
     args = parser.parse_args()
 
     if args.selftest:
         return selftest()
 
-    schema_dir = Path(args.schema_dir)
-    if not schema_dir.is_dir():
-        print(f"找不到 schema 目录：{schema_dir}", file=sys.stderr)
+    schema_dir = resolve_schema_dir(args.schema_dir)
+    if schema_dir is None:
         return 1
 
     errors, warnings = run_checks(schema_dir, draft=args.draft)
@@ -494,7 +775,7 @@ def main() -> int:
                           "passed": not errors}, ensure_ascii=False, indent=2))
         return 1 if errors else 0
 
-    print(f"一致性校验：{schema_dir}")
+    print(f"场记核对：{schema_dir}")
     for label, items in (("错误", errors), ("警告", warnings)):
         for item in items:
             print(f"  [{label}] {item}")

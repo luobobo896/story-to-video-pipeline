@@ -5,18 +5,49 @@
     "script_sha256": "79039b147c9b50ead3817a5eb2dfd0d93349d11a147a423aeafd01a22c7ea5e6",
     "episodes_planned": 1,
     "episodes_total_planned": 120,
-    "episode_duration_target_s": 120,
+    "episode_duration_target_s": 142,
     "aspect_ratio": "16:9",
     "delivery_aspect_ratio": "9:16",
     "language": "zh",
     "delivery_platform": "抖音",
     "updated_at": "2026-09-16",
+    "theme": {
+      "genre_primary": "古装穿越",
+      "genre_tags": ["权谋", "朝堂悬念", "爽剧", "现代视角喜剧调剂"],
+      "era_main": "大华王朝",
+      "era_cross": "现代",
+      "era_note": "架空王朝（大华），非真实历史朝代；主角是现代穿越者，现代场景只作为记忆碎片闪回出现",
+      "costume_direction": "中式古典考据向、非仙侠玄幻；锦缎 / 粗织 / 素面三种面料，低饱和哑光；文官宽袖高冠、武将窄袖护肩，按官阶区分袍色",
+      "tone": "权谋为底，主角的现代视角提供轻喜调剂；暴力场面克制，不做血腥",
+      "evidence": [
+        "剧本首行：「古装穿越剧」",
+        "「难道……我穿越了？」",
+        "「他前世好歹也是文科博士」",
+        "「难不成是……当今圣上？」"
+      ]
+    },
+    "inputs_from_author": {
+      "aspect_ratio_master": "16:9",
+      "delivery_platform": "抖音",
+      "delivery_aspect_ratio": "9:16",
+      "language": "纯中文",
+      "series_total_episodes": 120,
+      "note": "以上由作者指定，不由剧本推导；从剧本推导出来的字段见 derivation_notes"
+    },
+    "account": {
+      "plan": "basic",
+      "credits_per_month": 120,
+      "allowed_video_models": ["seedance_2_0", "seedance_2_0_mini"],
+      "mode_note": "Basic 档：seedance_2_0 只能配 --mode fast（限 480p/720p）；完整 2.0（std，含 1080p/4K）与 seedance_2_5 需 Pro 档",
+      "source": "官网定价页（作者 2026-09-16 复制）+ CLI 实测；明细见 docs/10-账号权限与积分门槛.md"
+    },
     "derivation_notes": {
       "project_name": "取自剧本首行剧名《状元是买的，但才华是真的！》，去掉结尾全角叹号以规避路径问题",
       "episodes_planned": "本次先做 1 集（第 1 章全章一集，不拆分），用于跑通流水线",
-      "episode_duration_target_s": "剧本未标注时长，按镜头数与镜头时长逐镜汇总：28 个镜头，插入/反应 3-4s、明确动作 4-6s，合计正好 120 秒",
+      "episode_duration_target_s": "原按镜头设计值逐镜汇总为 120s（28 镜）。配音实测后 9 个镜头的台词装不下设计时长，按 VD-002 的第 ③ 条延长镜头（向上取整到整秒，共 +22s），单集合计 142s。要走拆镜 / 精简台词压回 120s 见 open_questions Q-008",
       "episodes_total_planned": "全剧 120 集，由你提供；当前只提供第 1 章，后续章节到位后按同样规则续推",
-      "design_decisions": "角色外观、长刀形制、刀芒特效档位、未出场角色的轮廓要求均由本次拍板确定，详见 characters/styles 各条"
+      "design_decisions": "角色外观、长刀形制、刀芒特效档位、未出场角色的轮廓要求均由本次拍板确定，详见 characters/styles 各条",
+      "theme": "题材与时代取自剧本首行「古装穿越剧」与正文的现代 / 大华王朝两条时间线；由 S1 的题材识别步骤写入，不再散落在提示词与风格锚的名字里"
     }
   },
   "series": {
@@ -33,7 +64,7 @@
       "hook_in": "开场 2 秒内落地：人横穿厅堂被踹飞，砸在柱子上",
       "hook_out": "父亲叹气「只有一个办法」→ 江小白「哦吼，造反吗？」定格收尾",
       "est_shot_count": 28,
-      "est_duration_s": 120
+      "est_duration_s": 142
     }
   ],
   "characters": [
@@ -54,6 +85,8 @@
       ],
       "wardrobe_ids": ["WD-001"],
       "voice_id": "VC-001",
+      "voice_need": "男声，20 岁上下少年感；表面散漫气虚，关键处突然聚焦",
+      "asset_level": "full",
       "identity_mode": "fictional",
       "first_appearance": "EP01 开场",
       "status": "draft",
@@ -75,6 +108,8 @@
       ],
       "wardrobe_ids": ["WD-002"],
       "voice_id": "VC-002",
+      "voice_need": "男声，45 岁上下沉稳中年武将；压迫感强，怒而不乱，音量不高但字字重",
+      "asset_level": "full",
       "identity_mode": "fictional",
       "first_appearance": "EP01 开场",
       "status": "draft",
@@ -95,6 +130,8 @@
       ],
       "wardrobe_ids": ["WD-003"],
       "voice_id": "VC-003",
+      "voice_need": "女声，40 岁上下温和中年；本集情绪跨度大（慌张→哭诉→被压住），需要能扛住大起伏的音色",
+      "asset_level": "full",
       "identity_mode": "fictional",
       "first_appearance": "EP01 中段",
       "status": "draft",
@@ -113,6 +150,8 @@
       ],
       "wardrobe_ids": [],
       "voice_id": "",
+      "voice_need": "",
+      "asset_level": "silhouette",
       "identity_mode": "fictional",
       "first_appearance": "EP01 记忆闪回段",
       "status": "draft",
@@ -131,6 +170,8 @@
       ],
       "wardrobe_ids": [],
       "voice_id": "",
+      "voice_need": "",
+      "asset_level": "silhouette",
       "identity_mode": "fictional",
       "first_appearance": "EP01 推演段",
       "status": "draft",
@@ -144,6 +185,8 @@
       "appearance_anchors": ["以 PR-004 灵位牌代指，本集不建角色资产"],
       "wardrobe_ids": [],
       "voice_id": "",
+      "voice_need": "",
+      "asset_level": "none",
       "identity_mode": "fictional",
       "first_appearance": "EP01 台词提及",
       "status": "mentioned",
@@ -428,6 +471,20 @@
       "blocking_stage": "S3",
       "resolved": true,
       "answer": "全剧 120 集。本次先做 EP01 跑通流水线，后续章节到位后按同一规则续推"
+    },
+    {
+      "id": "Q-008",
+      "question": "单集时长：台词装不下 120s，是接受 142s 还是改走拆镜 / 精简台词？",
+      "blocking_stage": "S4",
+      "resolved": false,
+      "answer": "现状：EP01 台词实测 81.1s，12 个无台词镜头占 48s，实际下限 129.1s，而 120s 目标没有给台词留时间——9 个镜头出现「音频比镜头长」。本次已按 VD-002 第 ③ 条把 9 个镜头延长到整秒，单集合计 142s。若要守住 120s，需走第 ① 条拆镜或第 ② 条精简台词，那会改动分镜结构与剧本改编密度，等你拍板"
+    },
+    {
+      "id": "Q-009",
+      "question": "视频档位：Basic 档跑不了完整的 Seedance 2.0，是就用 Fast/Mini，还是升 Pro？",
+      "blocking_stage": "S4",
+      "resolved": false,
+      "answer": "官网定价页口径：Basic（$9/月、120 积分/月）只有 Seedance 2.0 **Fast** 与 **2.0 Mini**，完整 2.0（std，含 1080p/4K）与 2.5 需 Pro（$23/月、600 积分/月）。本机实测单价：mini 2.5 积分/秒、fast 3.5 积分/秒（≤720p）、std 4.5 积分/秒。EP01 整集 142 秒，三种跑法分别约 431 / 573 / 715 积分——Basic 的 120 积分只够约 1/4 集，出片量级上不去。本次分镜统一按 Basic 可用模型标注（`seedance_2_0` 以 `--mode fast` 执行 + `seedance_2_0_mini`），等你决定是否升 Pro 再改 meta.account 与执行参数"
     }
   ]
 }

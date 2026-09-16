@@ -1,6 +1,6 @@
 {
   "project_name": "状元是买的，但才华是真的",
-  "updated_at": "",
+  "updated_at": "2026-09-16",
   "assets": [
     {
       "asset_id": "CH-001",
@@ -81,6 +81,70 @@
       "status": "draft",
       "created_at": "2026-09-16",
       "review": "偏中性：木/石/织物/金属四块材质与左上硬光达标，但缺冷白刀光的高对比元素，背景剥落墙面引入了不属于本片的破败感。可用作材质与光位锚，若成片色调不统一则重生成 v002"
+    },
+    {
+      "asset_id": "CH-003",
+      "type": "character",
+      "name": "沈芸",
+      "source": "generated",
+      "anchor_file": "project/work/assets/CH-003_v001.png",
+      "sha256": "f56707efbd11b23d47ef7cee97fb89423515a19a6202e8ac2f979d0df6711738",
+      "job_id": "4ac2ed4f-8ea4-4346-86df-fdba789ffad5",
+      "soul_reference_id": "",
+      "version": "v001",
+      "model": "nano_banana_pro",
+      "cost_credits": 2,
+      "status": "draft",
+      "created_at": "2026-09-16",
+      "review": "已自检：年龄感、挽髻素银簪、鬓边白发、藕荷色襦裙+月白褙子、通身无绣纹、中等身形均符合锚点。待作者过目定稿（G2）"
+    },
+    {
+      "asset_id": "CH-004",
+      "type": "character",
+      "name": "礼部侍郎",
+      "source": "generated",
+      "anchor_file": "project/work/assets/CH-004_v002.png",
+      "sha256": "a7cdbf634bce49b657429bdd3cafe4a846e17eab2cf2ebae16bbbded1c3e724f",
+      "job_id": "9b984d41-a699-43d8-b4ac-a92bb790361f",
+      "soul_reference_id": "",
+      "version": "v002",
+      "model": "nano_banana_pro",
+      "cost_credits": 2,
+      "status": "draft",
+      "created_at": "2026-09-16",
+      "review": "v001 不合格已弃用（面部细节仍可辨、背景是城墙不是厅堂门洞）。v002 已自检：纯背光剪影、面部与五官完全不可辨、深色宽袖官袍、高冠带双垂帽翅、厅堂门洞内可见木柱与青石地面，符合 silhouette 级验收标准。待作者过目定稿（G2）"
+    },
+    {
+      "asset_id": "CH-005",
+      "type": "character",
+      "name": "当今圣上",
+      "source": "generated",
+      "anchor_file": "project/work/assets/CH-005_v001.png",
+      "sha256": "58ab72bbac46e3acb9c358751b946457cdd9212e557d8d94eaae910b91c3a0dd",
+      "job_id": "4f2d15b2-be3d-4f3a-9874-4f220fcee8d1",
+      "soul_reference_id": "",
+      "version": "v001",
+      "model": "nano_banana_pro",
+      "cost_credits": 2,
+      "status": "draft",
+      "created_at": "2026-09-16",
+      "review": "轮廓级资产：垂帘后高背龙椅端坐剪影、暗金袍色仅边缘微光、面部不可辨，符合 silhouette 级验收标准。待作者过目定稿（G2）"
+    },
+    {
+      "asset_id": "PR-004",
+      "type": "prop",
+      "name": "江家兄长灵位牌",
+      "source": "generated",
+      "anchor_file": "project/work/assets/PR-004_v001.png",
+      "sha256": "572044292b6524b4ccddac33414b847387f91853db06908535bb6001be1a0f64",
+      "job_id": "6d536d0b-c3ac-4f2d-be4a-5cf6d7832d05",
+      "soul_reference_id": "",
+      "version": "v001",
+      "model": "nano_banana_pro",
+      "cost_credits": 2,
+      "status": "draft",
+      "created_at": "2026-09-16",
+      "review": "已自检：两块深色木质灵位牌并排、竖排金漆字迹（不要求可辨）、供桌+香炉+两盏残烛，无人无手。待作者过目定稿（G2）"
     }
   ],
   "voices": [

@@ -23,7 +23,7 @@
 
 ## 二、三级锁：从文字到图到模型
 
-单个资产要经历三次收紧，每一级都落盘留痕：
+单个资产要经历三次收紧，每一级都记入台账留痕：
 
 ```text
 ① 文字锁   story_bible.json 里的 3-6 条外观锚点（可被图像检验）
@@ -105,7 +105,7 @@ higgsfield generate create seedance_2_0 \
 
 > 模型选择说明：`seedance_2_0` 是当前 CLI 文档中确认存在、且同时支持多图参考（最多 9 张）与自带音频生成的模型，因此作为本片主力。`seedance_2_5` 在官方 skills 里被标为默认视频模型但 CLI 的 `MODELS.md` 查不到，**必须以 `higgsfield model list` 的实际输出为准**；若确认存在，可整体升级。
 
-> **待实测**：`seedance-prompt-skill` 使用即梦的 `@图片1` 命名引用语法，Higgsfield CLI 走的是有序 `--image-references` 传参。**挂载顺序即引用顺序**是本方案的约定，`@图片N` 语法能否直接透传需要实测确认（见 [04-风险与校验点.md](04-风险与校验点.md) 的 R-01）。
+> **待实测**：`seedance-prompt-skill` 使用即梦的 `@图片1` 命名引用语法，Higgsfield CLI 走的是有序 `--image-references` 传参。**挂载顺序即引用顺序**是本方案的约定，`@图片N` 语法能否直接透传需要实测确认（见 [04-risks-and-verification-gates.md](04-risks-and-verification-gates.md) 的 R-01）。
 
 ---
 
@@ -135,7 +135,50 @@ higgsfield generate create seedance_2_0 \
 
 ---
 
-## 七、漂移检测：视觉十项
+## 七、场景与角色要不要"俯视图"？—— 查证结论
+
+> 起因：一个常见说法是"场景和人物的参考图，加个俯视图会更好"。查了一圈一手来源，结论是**要拆成两件事看**，别混。
+
+### 1. 角色：要的是**多角度**，不只是俯视 —— 有一手依据
+
+官方 Soul ID 训练的照片指南写得最直白（`higgsfield-skills/higgsfield-soul-id/references/photo-guide.md`）：
+
+> Variety: Higher variety = better identity capture.
+> - **Multiple angles: front, 3/4 left, 3/4 right, slight up/down.**
+> - Different lighting / different expressions / different distances (head shot → full body)
+> Avoid: **Same pose repeated.**
+
+同文件还给了量：**最少 5 张、最多 20 张，8–12 张是甜点区**。
+
+行业侧对得上：model sheet（角色设定图）的定义就是"把角色的头与身体**画在多个角度**（这个过程叫 model rotation），并附手、脚与几种基础表情"（[Model sheet · Wikipedia](https://en.wikipedia.org/wiki/Model_sheet)）。
+
+**落到本项目**：现有做法是"定妆图三视图"（正面半身 + 侧面 + 全身），方向正确；如果要再堵漂移，加的是**3/4 侧与略俯/略仰**这两种角度，而不是"俯视图"这一个。参考图上限足够：`nano_banana_pro` 最多 **14 张**参考图（`higgsfield-generate/references/media-inputs.md:37`），一张定妆图 + 两个 3/4 侧 + 一个仰角完全放得下。
+
+### 2. 场景：俯视图不是**参考图**规范，但它是**调度图**的正解 —— 用途不同
+
+官方对"场景该用什么"给的答案是**选模型**，不是选视角：
+
+> **Locations / environments / no-people scenes → Soul Location. Best in class — nothing else matches.**（`higgsfield-generate/references/model-catalog.md:26`、`:110`）
+
+社区侧的中文短剧 skill（`shuohao-skills` 的 `novel-art`）把场景资产的 11 道质量门定在：一致性锚点 3–5 条、**光照时段变体**、**空景**（无人无手）、变体机制、道具状态变体、**尺度参照**、白底可抠——**也没有"俯视图"这一条**。
+
+那"俯视图"在哪儿有用？在**影视的场面调度**里。previsualization 的经典定义就是"在实拍前可视化场景、规划**机位角度与 staging**"（[Previsualization · Wikipedia](https://en.wikipedia.org/wiki/Previsualization)），blocking 是"演员位置的精确排布"（[Blocking · Wikipedia](https://en.wikipedia.org/wiki/Blocking_(stage))），而俯视的平面图（floor plan / overhead plan）是这套调度工作的载体。
+
+**关键区别**：平面调度图是**给人看的**——用来推演机位与走位、防越轴；**生成模型不吃它**（它只吃参考图与首尾帧）。把平面图当参考图挂上去，模型不会因此更懂空间。
+
+### 3. 怎么落地（三条建议，按性价比排）
+
+| 建议 | 怎么做 | 为什么 / 成本 |
+|---|---|---|
+| ① **角色出多角度参考图集** | 定妆图之外补 3/4 左、3/4 右、略仰三张，一起挂载 | 官方训练指南的同一逻辑：角度多样性 = 身份捕获更稳；出图 0.12–2 积分/张 |
+| ② **场景出一张俯瞰空景当"调度图"** | `soul_location` 出 21:9 或 1:1 俯瞰空景，**只用于分镜排机位与走位**，不当作挂载参考 | 官方面向无人空景的最强模型，**0.12 积分/张**；多人同框、多个出入口的戏收益最大 |
+| ③ **一致性照旧靠锚点 + 同图挂载** | 每镜挂同一张场景空景 + 风格锚；走位用 `position_start/end`、`axis_note`、`props_in_frame` 写成文字 | 这是唯一被验证有效的机制（docs/02 第三节），俯瞰图替代不了它 |
+
+**别做的**：为每个场景都出俯视图并指望模型据此保持空间一致——没有依据；同一空间里如果一定要挑一个"多出来的角"，优先补**反打角度**（正打/反打各一张），它直接决定越轴是否穿帮。
+
+---
+
+## 八、漂移检测：视觉十项
 
 每个镜头生成后，用 Codex 原生识图对照下列十项逐项核对，结果写回 `shots.csv`：
 
@@ -154,11 +197,11 @@ higgsfield generate create seedance_2_0 \
 
 任一为 `fail` 则该镜头 `status=regen` 并重生成。**不允许带着 fail 进入剪辑阶段。**
 
-这十项背后的完整排错手册（症状 → 预防 → 检查帧 → 修复决策树）见 [06-连贯性与物理合理性检查清单.md](06-连贯性与物理合理性检查清单.md)。
+这十项背后的完整排错手册（症状 → 预防 → 检查帧 → 修复决策树）见 [06-continuity-and-physics-checklist.md](06-continuity-and-physics-checklist.md)。
 
 ---
 
-## 八、版本管理与留痕
+## 九、版本管理与留痕
 
 | 资产类型 | 管理方式 |
 |---|---|
@@ -177,7 +220,7 @@ git commit -m "S0: 项目初始化"
 
 ---
 
-## 九、跨集复用的资产
+## 十、跨集复用的资产
 
 交付时把资产分三档，写进 `project/delivery/asset_manifest.md`：
 

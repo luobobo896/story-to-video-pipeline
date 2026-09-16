@@ -2,12 +2,12 @@
 
 ---
 
-## 一、运行机制：为什么不会跑偏
+## 一、作业机制：为什么不会跑偏
 
 整套方案只有一个机制，但它是地基：
 
 ```text
-读 schema/ 文件 ──► 执行本阶段 ──► 结果回写 schema/ ──► 跑校验器 ──► 进下一阶段
+读 schema/ 文件 ──► 执行本阶段 ──► 结果回写 schema/ ──► 跑场记核对 ──► 进下一阶段
      ▲                                                              │
      └──────────── 只从文件读状态，不从上下文记忆读 ────────────────┘
 ```
@@ -23,31 +23,54 @@
 | 想换机器 | 克隆仓库即可，状态全在文本里 |
 | 想复盘"这镜头为什么这么生成" | `job_id` + `prompt_zh` + `version` 全在表里 |
 
-## 二、Codex 的两顶帽子
+## 二、会话纪律：看图有上限，视频阶段单独开工
 
-本流水线只需要一个执行者，但它需要切换两种工作模式。**关键是两种模式的产物都落盘，不靠对话传递。**
+上下文不是状态源，但它会被撑爆——**撑爆一次，这个会话就再也进不去**。本机实测（2026-09-16，`v-pr` 视频会话）：
+
+| 事实 | 数据 |
+|---|---|
+| 一个塞满内联图的会话 | 单次请求 `input_tokens` 627,099，rollout 55.3MB / 2914 条 |
+| 网关开始拒绝的请求体 | >40MB（40MB 放行，48MB 返回 `413 length limit exceeded`） |
+| 罪魁祸首 | 原始定妆图/关键帧 4–9MB、QA 拼图 2MB；直接识图一张就能往上下文里注入 3MB |
+
+两条硬纪律：
+
+1. **看图一律走 `python3 tools/eye.py <图片或视频> [--at T] [--tiles 3x2]`。** 它把同一画面压到 300KB 以内（定妆图 64KB、9:16 拼图 156KB），判断身份、穿帮、字幕位置照样够用。禁止把 `keyframes/`、`assets/`、`clips/` 里的原始文件直接喂给识图，也禁止让 `look.py` 的全尺寸 PNG 进上下文。
+2. **S4 视频生成单独开一个会话，一个会话只推一个阶段。** 出视频天然要反复看图，塞进"顺手改代码/写文档"的会话里必炸；重开会话的代价是零——状态全在 `schema/` 里，读一遍就接上（见第一节）。
+
+   已经撑爆的会话**不要 fork**：fork 继承历史，第一条请求照样 413。直接开新会话，从 `schema/` 接手。
+
+---
+
+## 三、Codex 的两顶帽子
+
+本流水线只需要一个执行者，但它需要切换两种工作模式。**关键是两种模式的产物都记入台账，不靠对话传递。**
 
 | 模式 | 干什么 | 不该干什么 |
 |---|---|---|
 | **推理脑**（S1 / S3） | 读剧本，抽取实体与剧情节点，推导分集与单集时长，撰写分镜脚本与中文提示词，设计钩子 | 不碰 CLI、不判断生成结果好坏 |
-| **执行手**（S0 / S2 / S4 / S5 / S6 / S7） | 读写 `schema/`、调 `higgsfield` CLI、上传与登记素材、用原生识图做视觉六项校验、跑 ffmpeg 剪辑、打包交付 | 不凭记忆断言"已经生成过了"，必须先读文件 |
+| **执行手**（S0 / S2 / S4 / S5 / S6 / S7） | 读写 `schema/`、调 `higgsfield` CLI、上传与登记素材、用原生识图做视觉六项校验（素材先过 `tools/eye.py`）、跑 ffmpeg 剪辑、打包交付 | 不凭记忆断言"已经生成过了"，必须先读文件 |
 
-切换点就是**闸门**：推理脑产出 → 校验器通过 → 执行手开工 → 结果回写 → 推理脑读表继续。
+切换点就是**验收关**：推理脑产出 → 场记核对通过 → 执行手开工 → 结果回写 → 推理脑读表继续。
 
 ---
 
-## 三、单集运行 Playbook
+## 四、单集通告单（照单执行）
 
 ```bash
+# 命令都在复用层根目录执行；P 指向项目实例（也可以是仓库外的路径）
+PIPELINE_HOME=/Users/hanson/work/个人文档/v-pr/story-to-video-pipeline
+P=$PIPELINE_HOME/projects/{{项目名}}
+
 # ── 开工：先读状态，别靠记忆 ──────────────────────────
-cd 短剧流水线
-python3 tools/check_consistency.py          # 必须 0 错误
-jq '.meta' schema/story_bible.json          # 确认项目参数未变
-higgsfield account status                   # 确认额度
+cd $PIPELINE_HOME
+python3 tools/check_consistency.py --schema-dir $P/schema    # 必须 0 错误
+jq '.meta' $P/schema/story_bible.json                        # 确认项目参数未变
+higgsfield account status                                    # 确认额度
 
 # ── S3 分镜 ─────────────────────────────────────────
 # 产出 EP{{NN}} 的场次与镜头，写入 episodes.csv / shots.csv
-python3 tools/check_consistency.py          # 闸门 G3
+python3 tools/check_consistency.py --schema-dir $P/schema    # 验收关 G3
 
 # ── S4 逐镜生成 ─────────────────────────────────────
 # 对 shots.csv 中 status=todo 的每一行：
@@ -55,21 +78,21 @@ python3 tools/check_consistency.py          # 闸门 G3
 #   2. 挂载 CH/EN/ST + 首尾帧 -> 生成视频
 #   3. job_id 回填 shots.csv
 #   4. 视觉六项校验 -> 写 qa_* 字段
-python3 tools/check_consistency.py          # 闸门 G4
+python3 tools/check_consistency.py --schema-dir $P/schema    # 验收关 G4
 
 # ── S5 配音 ────────────────────────────────────────
 higgsfield voices list --json
 # 逐句 TTS -> audio/；回填 audio_duration_s
-python3 tools/check_consistency.py          # 闸门 G5
+python3 tools/check_consistency.py --schema-dir $P/schema    # 验收关 G5
 
 # ── S6 剪辑 ────────────────────────────────────────
 # 拼接 -> 修首尾 -> 转场 -> 统一调色 -> 混音 -> 字幕
-ffprobe 批量核对规格                         # 闸门 G6
+ffprobe 批量核对规格                         # 验收关 G6
 higgsfield generate workflow reframe ...     # 出 9:16 抖音分发版
 
 # ── S7 交付 ────────────────────────────────────────
 # 成片 + 封面 + 资产清单 + 归档包
-git add -A && git commit -m "EP{{NN}}: 通过全部闸门"
+git add -A && git commit -m "EP{{NN}}: 通过全部验收关"
 git tag ep{{NN}}-v001
 ```
 
@@ -77,7 +100,7 @@ git tag ep{{NN}}-v001
 
 ---
 
-## 四、一次典型对话怎么发起
+## 五、一次典型对话怎么发起
 
 你只需要给 Codex 一个阶段指令，不需要复述上下文：
 
@@ -90,26 +113,26 @@ git tag ep{{NN}}-v001
       每张出完对着锚点自检，不合格重生成。
 
 【S3】按 episode_plan 拆集，写入 episodes.csv 与 shots.csv。
-      一镜只放一个主节拍，单镜 2-4s，主体放在中心安全区。跑校验器到 G3 通过。
+      一镜只放一个主节拍，单镜 2-4s，主体放在中心安全区。跑场记核对到 G3 通过。
 
 【S4】生成 EP{{NN}} 的全部镜头，逐镜做视觉六项校验，不合格就重生成，不要带 fail 过来。
 ```
 
 ---
 
-## 五、部署与运行说明
+## 六、装机与作业说明
 
 ### 环境要求
 
 | 项 | 要求 |
 |---|---|
 | 操作系统 | macOS / Linux（本机 macOS 已具备全部本地工具） |
-| 必须安装 | `higgsfield` CLI（**当前未安装**）、`python3`、`ffmpeg`、`git` |
+| 必须安装 | `higgsfield` CLI（**已装 v1.1.25**）、`python3`、`ffmpeg`、`git` |
 | 推荐安装 | `jq`、`ImageMagick` |
 | 账号 | Higgsfield 账号（免费额度可跑生成；Soul 训练需 Basic 以上，本项目不用） |
 | 密钥 | **无** |
 
-### 首次部署
+### 首次装机
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/higgsfield-ai/cli/main/install.sh | sh
@@ -122,13 +145,14 @@ higgsfield model list            # 核实现行模型，别照抄文档
 
 | 目录 | 写入者 | 是否入库 |
 |---|---|---|
-| `schema/` | Codex | **入库**（唯一真相源） |
-| `docs/` / `tools/` | 人 | **入库** |
-| `project/raw/` | 人（只读） | 剧本入库 |
-| `project/work/` | Codex | 不入库 |
-| `project/delivery/` | Codex | 不入库（另走网盘 / OSS） |
+| `<项目>/schema/` | Codex | **入库**（场记台账） |
+| `<项目>/docs/`（含 07 实测记录）+ `<项目>/README.md` | 人 / Codex | **入库** |
+| `<项目>/project/raw/` | 人（只读） | 剧本入库 |
+| `<项目>/project/work/` | Codex | 不入库 |
+| `<项目>/project/delivery/` | Codex | 不入库（另走网盘 / OSS） |
+| 复用层 `rules/` `tools/` `docs/01–06,08,09` `skills/` | 人 | **入库**，且**不复制进项目** |
 
-### 备份策略
+### 留底策略
 
 1. **`schema/` 是命根子**：每次提交推到远端仓库，它能让任何一台机器在几分钟内恢复全部状态。
 2. **大文件用对象存储**：`project/work/` 与 `project/delivery/` 同步到网盘或 OSS，保持目录结构一致。
@@ -136,7 +160,7 @@ higgsfield model list            # 核实现行模型，别照抄文档
 
 ---
 
-## 六、交付与归档规范
+## 七、交付与归档规范
 
 ```
 project/delivery/

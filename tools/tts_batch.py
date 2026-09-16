@@ -25,6 +25,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _project import resolve_project_root  # noqa: E402
+
 ROOT = Path(__file__).resolve().parent.parent
 SCHEMA = ROOT / "schema"
 SHOTS = SCHEMA / "shots.csv"
@@ -86,7 +89,17 @@ def main() -> int:
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--force", action="store_true", help="重生成已有音频")
     ap.add_argument("--report", action="store_true", help="输出配音对照表 markdown")
+    ap.add_argument("--project", default="",
+                    help="项目根目录；不给则自动选中 projects/ 下唯一的项目")
     args = ap.parse_args()
+
+    global ROOT, SCHEMA, SHOTS, AUDIO
+    proj = resolve_project_root(args.project)
+    if proj is None:
+        return 1
+    ROOT = proj
+    SCHEMA, SHOTS = ROOT / "schema", ROOT / "schema/shots.csv"
+    AUDIO = ROOT / "project/work/audio"
 
     vmap = voice_map()
     if not vmap:

@@ -1,5 +1,8 @@
 .env
 .DS_Store
-project/work/
-project/delivery/
+__pycache__/
+# 项目实例的素材与成片（任意深度，项目目录可以放在 projects/ 或仓库外）
+**/project/work/
+**/project/delivery/
+*.mp4
 *.tmp

@@ -15,11 +15,11 @@
 
 | 文件 | 前缀 | 管什么 |
 |---|---|---|
-| [COMP-成片核心要素.md](COMP-成片核心要素.md) | `COMP-` | **一集短剧的最小完整要素**（A 缺了不成立 / B 平台不认 / C 质量塌陷） |
-| [ME-表演与微表情.md](ME-表演与微表情.md) | `ME-###` | 面部表演、情绪节拍、可读性 |
-| [PH-物理与动作.md](PH-物理与动作.md) | `PH-###` | 受力、轨迹、质量感、环境响应 |
-| [VD-配音与字幕.md](VD-配音与字幕.md) | `VD-###` | 音色绑定、台词时长预算、字幕时间轴 |
-| [FF-剪辑与交付.md](FF-剪辑与交付.md) | `FF-###` | 剪辑顺序、交付合规、看图验收（基于 `ffmpeg-skill`） |
+| [COMP-core-elements.md](COMP-core-elements.md) | `COMP-` | **一集短剧的最小完整要素**（A 缺了不成立 / B 平台不认 / C 质量塌陷） |
+| [ME-performance-and-micro-expressions.md](ME-performance-and-micro-expressions.md) | `ME-###` | 面部表演、情绪节拍、可读性 |
+| [PH-physics-and-action.md](PH-physics-and-action.md) | `PH-###` | 受力、轨迹、质量感、环境响应 |
+| [VD-voice-and-subtitles.md](VD-voice-and-subtitles.md) | `VD-###` | 音色绑定、台词时长预算、字幕时间轴 |
+| [FF-editing-and-delivery.md](FF-editing-and-delivery.md) | `FF-###` | 剪辑顺序、交付合规、看图验收（基于 `ffmpeg-skill`） |
 
 ## 每条规则的固定结构
 

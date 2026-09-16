@@ -18,9 +18,9 @@
 | R-10 | 资产被覆盖，无法回滚 | "上一版更好"却找不回 | 文件名被重写 | 生成参数只追加不覆盖；`_v00N` 命名；`sha256` 留痕 |
 | R-11 | 密钥泄漏 | 账号被盗刷 | 异常账单 | `.env` 不入库、不回显、泄漏即 revoke |
 | R-12 | 余额 / 套餐不足 | 训练与生成中断 | `account status` 余额低；Soul 训练报 `Minimum Basic plan required` | S0 先查余额；长项目分段提交、分批付费 |
-| R-13 | 重开对话后状态丢失 | 重复劳动、编号错乱 | Agent 不知道已生成到哪一镜 | 唯一真相源在 `schema/`；每次开工先跑校验器读状态 |
+| R-13 | 重开对话后状态丢失 | 重复劳动、编号错乱 | Agent 不知道已生成到哪一镜 | 场记台账在 `schema/`；每次开工先跑场记核对读状态 |
 | R-14 | 成片规格不统一 | 平台上传失败或画质被压 | 分辨率 / 帧率混杂 | S6 用 `ffprobe` 批量核对后 `sort | uniq -c` 检查 |
-| R-15 | 跨集复用资产时把项目资产带出去 | 系列剧之间串味 | 其他集出现不属于它的角色 | 资产分三档登记，见 02 文档第九节 |
+| R-15 | 跨集复用资产时把项目资产带出去 | 系列剧之间串味 | 其他集出现不属于它的角色 | 资产分三档登记，见 02 文档第十节 |
 | R-16 | 16:9 母版横转竖后主体被裁 | 抖音分发版画面缺主体或字幕被切 | 分发版里人物只剩半个 | S3 就按中心安全区构图（横向保留中间约 56%）；`qa_safe_area` 逐镜校验；S6 出竖版后人工复检 |
 | R-17 | 抖音横版完播率偏低 | 播放量损失 | 数据后台完播率明显低于同类 | 16:9 只作母版；抖音主发 9:16 分发版；封面同时出两个版本 |
 | R-18 | 人物与场景物体 / 道具穿透 | 画面穿帮，观感崩塌 | 肢体插进桌椅、门窗 | 少写人物与道具的物理交互；提示词写明遮挡关系；`qa_physics` 逐镜校验；单帧穿帮用 `draw_to_video` 局部修 |
@@ -30,35 +30,36 @@
 
 ---
 
-## 二、阶段闸门（Gate）
+## 二、阶段验收关
 
-每道闸门必须全部通过，才允许进入下一阶段。
+每道验收关必须全部通过，才允许进入下一阶段。
 
-| 闸门 | 位置 | 通过条件 | 检查方式 |
+| 验收关（工位） | 位置 | 通过条件 | 检查方式 |
 |---|---|---|---|
-| G0 | S0 → S1 | 目录就绪、`.env` 就绪、剧本指纹已记录 | `check_consistency.py` 通过 |
-| G1 | S1 → S2 | 五类实体齐备、每个实体至少 3 条外观锚点、`open_questions` 为空 | 人工过表 + `jq` 抽查 |
-| G2 | S2 → S3 | 每个角色的 `anchor_file` 已定稿且哈希入档；场景图无人；风格锚图已定 | 逐张比对锚点 + 校验器检查资产完整性 |
-| G3 | S3 → S4 | `script_ref` 覆盖率 100%；每镜 `refs` 均存在；时长误差小于 10% | `check_consistency.py` |
-| G4 | S4 → S5 | 所有镜头 `status=done` 且十个 `qa_*` 全为 `pass` | `check_consistency.py` |
-| G5 | S5 → S6 | 同角色音色唯一；每条音频不超镜头时长 | `check_consistency.py` |
-| G6 | S6 → S7 | 全片规格统一、无黑帧、无音画不同步；9:16 分发版主体与字幕完整 | `ffprobe` 批量核对 + 抽样播放 |
-| G7 | S7 完成 | 归档包解压后能重新校验通过 | 解压后跑 `check_consistency.py` |
+| **G0 筹备关** | S0 → S1 | 剧本已入库（只读）、指纹写入 `meta.script_sha256`、场记台账建好 | `check_consistency.py --schema-dir <项目>/schema --draft` **0 错误**（草稿模式只提示还没跑的 N1 题材识别） |
+| **G1 剧本过会** | S1 → S2 | 五类实体齐备、每个实体至少 3 条外观锚点、`open_questions` 为空 | 人工过表 + `jq` 抽查 |
+| **G2 定妆关** | S2 → S3 | 每个角色的 `anchor_file` 已定稿且哈希入档；场景图无人；风格锚图已定 | **逐张比对锚点（人工）** + 场记核对查资产完整性 |
+| **G3 分镜关** | S3 → S4 | `script_ref` 覆盖率 100%；每镜 `refs` 均存在且挂了风格锚；**台词时长预算达标**（字数 ÷ 4.4 + 0.5s ≤ 镜头时长）；`episodes.csv` 与分镜自洽；单集时长误差小于 10%；相邻镜头不连续 3 镜同 Z；同批角色的相邻镜头姿态接得上 | `check_consistency.py`（R14 / R17 / R18 / R19 / R20） |
+| **G4 过片关** | S4 → S5 | 所有镜头 `status=done` 且十个 `qa_*` 全为 `pass`（逐镜过片质检） | `check_consistency.py` |
+| **G5 配音关** | S5 → S6 | 同角色音色唯一；每条音频不超镜头时长 | `check_consistency.py` |
+| **G6 定剪关** | S6 → S7 | 全片规格统一、无黑帧、无音画不同步；9:16 分发版主体与字幕完整；**字幕时间轴与 `shots.csv` 逐条对齐**（改过时长就必须重跑 `make_srt.py`） | `ffprobe` 批量核对 + 抽样播放 + `check_consistency.py`（R16） |
+| **G7 交片关** | S7 完成 | 归档包解压后能重新过一遍场记核对 | 解压后跑 `check_consistency.py` |
 
 ---
 
-## 三、校验器做了什么
+## 三、场记核对做了什么
 
-`tools/check_consistency.py` 是上述闸门的自动化部分，零依赖（仅 Python 标准库）。
+`tools/check_consistency.py` 是上述验收关的自动化部分，零依赖（仅 Python 标准库）。
 
 ```bash
-python3 tools/check_consistency.py             # 校验当前项目
-python3 tools/check_consistency.py --draft     # 草稿模式：分镜先出稿、资产后补时用
-python3 tools/check_consistency.py --selftest  # 自检：故意造坏数据，确认它真的会报错
-python3 tools/check_consistency.py --json      # 机器可读输出
+python3 tools/check_consistency.py                              # 只有一个项目时自动选中
+python3 tools/check_consistency.py --schema-dir projects/X/schema  # 多项目时必须显式指定
+python3 tools/check_consistency.py --draft                      # 草稿模式：分镜先出稿、资产后补时用
+python3 tools/check_consistency.py --selftest                   # 自检：故意造坏数据，确认它真的会报错
+python3 tools/check_consistency.py --json                       # 机器可读输出
 ```
 
-**草稿模式（`--draft`）**：允许 `shots.csv` 在资产尚未定稿时先出稿，`refs` 可指向还不存在于 `assets.json` 的资产 ID；同时把 QA 门禁降级为警告。用途是 S2 卡在账号/工具时也能先推进 S3。**S4 开始前必须切回正式模式并通过。**
+**草稿模式（`--draft`）**：允许 `shots.csv` 在资产尚未定稿时先出稿，`refs` 可指向还不存在于 `assets.json` 的资产 ID；同时把 QA 过片标准降级为警告。用途是 S2 卡在账号/工具时也能先推进 S3。**S4 开始前必须切回正式模式并通过。**
 
 校验项（新增第 0 项）：
 
@@ -67,15 +68,24 @@ python3 tools/check_consistency.py --json      # 机器可读输出
 检查项：
 
 1. `shots.csv` 的 `episode_id` / `scene_id` 必须存在于 `episodes.csv`。
-2. `shots.csv` 的 `refs` / `voice_id` 引用的资产必须存在于 `assets.json`。**只认已登记的资产**——在 `story_bible.json` 里写了角色定义不算，必须有定稿图登记在案，否则 G2 闸门形同虚设。
+2. `shots.csv` 的 `refs` / `voice_id` 引用的资产必须存在于 `assets.json`。**只认已登记的资产**——在 `story_bible.json` 里写了角色定义不算，必须有定稿图登记在案，否则 G2 验收关形同虚设。
 3. `episodes.csv` 的 `characters` / `location_env_id` 引用必须存在。
 4. `shot_id` 必须唯一，且符合 `EP\d{2}-SC\d{2}-SH\d{3}` 格式。
 5. 每个 `type=character` 的资产必须有 `anchor_file` 或 `soul_reference_id`。
 6. `script_ref` 覆盖率必须 100%。
 7. `status=done` 的镜头必须十个 `qa_*` 字段全为 `pass`（含 `qa_safe_area`、`qa_continuity`、`qa_physics`、`qa_props`）。
 8. `audio_duration_s`（若填写）不得超过该镜 `duration_s`。
-9. 含角色的镜头一旦开工（`status=wip/done`），必须已标注 `pose_start` / `pose_end` / `position_start` / `position_end` / `facing`，否则告警。
+9. 含角色的镜头一旦开工（`status=wip/done/regen`），必须已标注 `pose_start` / `pose_end` / `position_start` / `position_end` / `facing`，否则告警。
 10. 已登记 `anchor_file` + `sha256` 的资产，本地文件哈希必须与登记值一致；文件不存在时告警（可能在另一台机器或尚未下载）。
+11. **[R13] 题材与时代必须显式记入台账**（`meta.theme.genre_primary` / `era_main` / `evidence`），且 `era_main` / `era_cross` 必须能在 `timeline[].label` 里找到对应时间线。判据见 `docs/01` S1。
+12. **[R14] 台词时长预算**：有台词但还没配音的镜头，`duration_s ≥ 字数 ÷ 4.4 + 0.5s`；已配音的镜头改由第 8 项按实测音频判。依据 VD-002。
+13. **[R15] 音色归属**：`assets.json.voices[]` 绑定的角色必须有角色资产（不能角色没定稿就先绑音色）；有台词的镜头必须填 `voice_id`；`voice_id` 必须属于本镜 `refs` 里出现的角色（防止台词挂错人）；无台词却填了 `voice_id` 会告警。
+14. **[R16] 字幕与分镜同步**：SRT 存在时，条数必须等于有台词的镜头数，且每条的起始时间必须等于该镜之前所有镜头 `duration_s` 的累加（差值 >0.05s 即报错）。
+15. **[R17] 分集表自洽**：`episodes.csv` 的 `shot_count` / `est_duration_s` 必须与 `shots.csv` 的实际镜头数、时长合计一致；单集合计与 `meta.episode_duration_target_s` 偏差不得超过 10%。
+16. **[R18] 景别节奏**：同一集内不得连续 3 镜使用同一 `shot_size_z`。依据 `docs/01` S3。
+17. **[R19] 风格锚必须挂载**：每镜 `style_id` 必填，且必须出现在该镜的 `refs` 里。依据 `docs/02` 第五节。
+18. **[R20] 姿态连续性**：同一批出镜角色（`refs` 相同）的相邻镜头，上一镜 `pose_end` 必须等于下一镜 `pose_start`。依据风险 R-20。
+19. **[R21] 模型必须在本账号档位可用**：`shots.csv` 的 `model` 必须落在 `meta.account.allowed_video_models` 里。依据 [docs/10](10-account-plans-and-credits.md) 的档位矩阵——Basic 档没有完整的 Seedance 2.0（只能 `--mode fast`）与 2.5，写进分镜也跑不出来，必须在这里就拦住。
 
 ---
 
@@ -89,7 +99,7 @@ python3 tools/check_consistency.py --json      # 机器可读输出
 
 ---
 
-## 五、回归检查（改了什么就重跑什么）
+## 五、返工范围（改了什么就重跑什么）
 
 | 改动 | 必须重跑 |
 |---|---|
@@ -97,4 +107,4 @@ python3 tools/check_consistency.py --json      # 机器可读输出
 | 换了 `ST-###` 风格锚图 | 全片镜头（色调锚变更等于换片） |
 | 改了某镜提示词 | 只重生成该镜，外加相邻的 2 镜（检查衔接） |
 | 换了角色音色 | 该角色全部台词音频 |
-| 改了分集结构 | G3 闸门，以及受影响的集 |
+| 改了分集结构 | G3 验收关，以及受影响的集 |

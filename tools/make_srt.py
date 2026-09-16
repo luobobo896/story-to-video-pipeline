@@ -18,6 +18,9 @@ import csv
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _project import resolve_schema_dir  # noqa: E402
+
 
 def ts(seconds: float) -> str:
     ms = int(round(seconds * 1000))
@@ -48,14 +51,17 @@ def wrap(text: str, max_chars: int) -> str:
 def main() -> int:
     parser = argparse.ArgumentParser(description="shots.csv -> SRT")
     parser.add_argument("--schema-dir",
-                        default=str(Path(__file__).resolve().parent.parent / "schema"))
+                        default="", help="项目 schema 目录；不给则自动选中 projects/ 下唯一的项目")
     parser.add_argument("--shots", default="", help="按 shot_id 前缀过滤，如 EP01-SC01")
     parser.add_argument("-o", "--output", default="")
     parser.add_argument("--max-chars", type=int, default=20,
                         help="单行字幕字数上限，超出折行（默认 20）")
     args = parser.parse_args()
 
-    shots_path = Path(args.schema_dir) / "shots.csv"
+    schema_dir = resolve_schema_dir(args.schema_dir)
+    if schema_dir is None:
+        return 1
+    shots_path = schema_dir / "shots.csv"
     if not shots_path.exists():
         print(f"找不到 {shots_path}", file=sys.stderr)
         return 1
@@ -65,7 +71,7 @@ def main() -> int:
         rows = [r for r in rows if (r.get("shot_id") or "").startswith(args.shots)]
 
     out_path = Path(args.output) if args.output else \
-        Path(args.schema_dir).parent / "project/work/edit/EP01.srt"
+        schema_dir.parent / "project/work/edit/EP01.srt"
 
     cursor = 0.0
     cues = []
