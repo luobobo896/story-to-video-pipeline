@@ -19,6 +19,7 @@ import hashlib
 import io
 import json
 import re
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -57,6 +58,118 @@ def read_json(path: Path) -> dict:
     if not path.exists():
         return {}
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def probe_streams(path: Path) -> list[str]:
+    """返回容器里的流类型列表，如 ['video', 'audio']。失败返回 []。"""
+    try:
+        out = subprocess.run(
+            ["ffprobe", "-v", "error", "-show_entries", "stream=codec_type",
+             "-of", "csv=p=0", str(path)],
+            capture_output=True, text=True, timeout=60)
+    except (OSError, subprocess.SubprocessError):
+        return []
+    return [ln.strip() for ln in out.stdout.splitlines() if ln.strip()]
+
+
+def probe_dims(path: Path) -> tuple[int, int]:
+    try:
+        out = subprocess.run(
+            ["ffprobe", "-v", "error", "-select_streams", "v:0",
+             "-show_entries", "stream=width,height", "-of", "csv=p=0", str(path)],
+            capture_output=True, text=True, timeout=60)
+        w, h = out.stdout.strip().split(",")[:2]
+        return int(w), int(h)
+    except (OSError, subprocess.SubprocessError, ValueError):
+        return 0, 0
+
+
+def check_delivery(project_root: Path, shots: list[dict[str, str]], draft: bool) -> tuple[list[str], list[str]]:
+    """按 rules/COMP-成片核心要素.md 审计交付完整性。"""
+    errors: list[str] = []
+    warnings: list[str] = []
+    delivery = project_root / "project/delivery"
+    edit = project_root / "project/work/edit"
+    audio = project_root / "project/work/audio"
+
+    def report(rule: str, msg: str, hard: bool = True) -> None:
+        (warnings if draft or not hard else errors).append(f"[{rule}] {msg}")
+
+    # A1 视频轨：优先认 delivery/，没归档则退回 work/edit/
+    clips = sorted(delivery.glob("*.mp4"))
+    if clips:
+        pass
+    else:
+        clips = sorted(p for p in edit.glob("*.mp4") if not p.name.startswith("caption_tooltest"))
+        if clips:
+            report("COMP-A1", f"成片还在 work/edit/，尚未归档到 delivery/（{len(clips)} 个）", hard=False)
+        else:
+            report("COMP-A1", "找不到任何成片（delivery/ 与 work/edit/ 下都没有 .mp4）")
+            return errors, warnings
+
+    # A2 声音轨
+    has_audio = [c for c in clips if "audio" in probe_streams(c)]
+    if not has_audio:
+        report("COMP-A2", "成片里没有音频流（静音的不是短剧）")
+
+    # A3 台词
+    voiced = [r for r in shots if (r.get("dialogue") or "").strip()]
+    missing = [r["shot_id"] for r in voiced if not (r.get("audio_file") or "").strip()]
+    if missing:
+        report("COMP-A3", f"{len(missing)} 个有台词的镜头没有配音音频：{', '.join(missing[:4])}…")
+
+    # 台词是否真的混进了成片：音频文件存在但成片时长明显短于台词总长时提示
+    total_voice = 0.0
+    for r in voiced:
+        try:
+            total_voice += float(r.get("audio_duration_s") or 0)
+        except ValueError:
+            pass
+
+    # B1 字幕
+    srts = list(delivery.glob("*.srt")) + list(edit.glob("EP*.srt"))
+    subs_in_clip = any("subtitle" in probe_streams(c) for c in clips)
+    if not srts and not subs_in_clip:
+        report("COMP-B1", "既没有 .srt 文件，成片里也没有字幕轨")
+
+    # B2 分发画幅
+    vertical = [c for c in clips if (lambda d: d[1] > d[0] and min(d) >= 1080)(probe_dims(c))]
+    if not vertical:
+        report("COMP-B2", "没有 9:16 且短边 ≥1080 的分发版")
+
+    # B4 封面
+    covers = [p for p in delivery.glob("cover_*") if p.suffix.lower() in (".jpg", ".jpeg", ".png")]
+    if len(covers) < 2:
+        report("COMP-B4", f"封面不足 2 张（横竖各一），当前 {len(covers)} 张", hard=False)
+
+    # C1 环境音
+    sfx = [p for p in (audio / "sfx").glob("*") if p.is_file()] if (audio / "sfx").is_dir() else []
+    if not sfx:
+        report("COMP-C1", "没有环境音 / 音效（work/audio/sfx/ 为空或不存在）", hard=False)
+
+    # C2 BGM
+    bgm = [p for p in audio.glob("*") if p.is_file() and "bgm" in p.name.lower()]
+    if not bgm:
+        report("COMP-C2", "没有 BGM 轨", hard=False)
+
+    # C5 台账
+    for name in ("asset_manifest.md", "delivery_checklist.md"):
+        if not (delivery / name).exists():
+            report("COMP-C5", f"缺少 {name}", hard=False)
+
+    # 台词塞不塞得下：所有台词音频的总长不能超过成片时长
+    if total_voice:
+        try:
+            dur = float(subprocess.run(
+                ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+                 "-of", "csv=p=0", str(clips[-1])],
+                capture_output=True, text=True, timeout=60).stdout.strip())
+        except (OSError, subprocess.SubprocessError, ValueError):
+            dur = 0.0
+        if dur and total_voice > dur:
+            report("COMP-A3", f"台词音频总长 {total_voice:.1f}s 超过成片时长 {dur:.1f}s，必然塞不下")
+
+    return errors, warnings
 
 
 def check_csv_shape(path: Path, name: str) -> list[str]:
@@ -356,6 +469,8 @@ def main() -> int:
     parser.add_argument("--selftest", action="store_true", help="自检校验器本身")
     parser.add_argument("--draft", action="store_true",
                         help="草稿模式：跳过资产存在性检查，允许先出分镜稿再补资产")
+    parser.add_argument("--delivery", action="store_true",
+                        help="额外按 rules/COMP-成片核心要素.md 审计交付完整性")
     args = parser.parse_args()
 
     if args.selftest:
@@ -367,6 +482,12 @@ def main() -> int:
         return 1
 
     errors, warnings = run_checks(schema_dir, draft=args.draft)
+
+    if args.delivery:
+        shot_rows = read_csv_rows(schema_dir / "shots.csv")
+        d_err, d_warn = check_delivery(schema_dir.parent, shot_rows, draft=args.draft)
+        errors.extend(d_err)
+        warnings.extend(d_warn)
 
     if args.json:
         print(json.dumps({"errors": errors, "warnings": warnings,
