@@ -1,0 +1,385 @@
+{
+  "meta": {
+    "project_name": "状元是买的，但才华是真的",
+    "script_file": "project/raw/状元是买的，但才华是真的.txt",
+    "script_sha256": "79039b147c9b50ead3817a5eb2dfd0d93349d11a147a423aeafd01a22c7ea5e6",
+    "episodes_planned": 2,
+    "episode_duration_target_s": 60,
+    "aspect_ratio": "16:9",
+    "delivery_aspect_ratio": "9:16",
+    "language": "zh",
+    "delivery_platform": "抖音",
+    "updated_at": "2026-09-16",
+    "derivation_notes": {
+      "project_name": "取自剧本首行剧名《状元是买的，但才华是真的！》，去掉结尾全角叹号以规避路径问题",
+      "episodes_planned": "剧本目前只提供第 1 章（正文净字 2330 字，台词 28 条共 456 字）。按短剧单集 900-1200 字的密度，第 1 章可拆 2 集。全剧总集数需后续章节累计，当前值仅为第 1 章可拆集数",
+      "episode_duration_target_s": "剧本未标注时长，按镜头数与镜头时长汇总估算：台词 456 字 ÷ 中文 TTS 约 4.5 字/秒 ≈ 101 秒纯台词时长，再按一镜一主节拍估算第 1 章约 22-26 个镜头（插入 2-4s、动作 4-7s、表演 8-12s），合计约 110-125 秒。拆成 2 集后单集目标 60 秒",
+      "alternative": "备选口径：第 1 章不拆集，做单集 110-125 秒。取舍依据是抖音完播率，60 秒档优于 2 分钟档；需你确认"
+    }
+  },
+  "episode_plan": [
+    {
+      "episode_id": "EP01",
+      "title": "一脚踹出十米远",
+      "script_ref": "第1章 · 开篇至沈芸登场前",
+      "beats": ["PB-001", "PB-002", "PB-003"],
+      "hook_in": "开场 2 秒内落地：人被一脚踹飞，砸在柱子上",
+      "hook_out": "江景承怒吼「你买的还是状元」，危机定性",
+      "est_shot_count": 12,
+      "est_duration_s": 60
+    },
+    {
+      "episode_id": "EP02",
+      "title": "为今之计，只有一个办法",
+      "script_ref": "第1章 · 沈芸登场至章末",
+      "beats": ["PB-004", "PB-005", "PB-006", "PB-007", "PB-008", "PB-009"],
+      "hook_in": "母亲扑上来挡刀，「他还是个孩子」",
+      "hook_out": "江景承叹气「只有一个办法」+ 江小白「哦吼，造反吗？」悬念收尾",
+      "est_shot_count": 12,
+      "est_duration_s": 60
+    }
+  ],
+  "characters": [
+    {
+      "id": "CH-001",
+      "name": "江小白",
+      "role": "主角",
+      "identity": "现代穿越者（前世文科博士），附身大华王朝镇北侯府世子；前身为同名纨绔",
+      "age_feel": "少年感（母亲称「他还是个孩子」），推定 17-20 岁",
+      "appearance_anchors": [
+        "身份=镇北侯府世子，少年感",
+        "开场状态=被踹飞后狼狈跌坐在地，衣袍沾尘",
+        "{{待确认：发型}}",
+        "{{待确认：服装主色与款式}}",
+        "{{待确认：体型身高与五官}}"
+      ],
+      "wardrobe_ids": ["WD-001"],
+      "voice_id": "VC-001",
+      "identity_mode": "fictional",
+      "first_appearance": "EP01 开场",
+      "status": "draft",
+      "notes": "剧本未给任何外貌描写，外观锚点需你确认后才能进 S2"
+    },
+    {
+      "id": "CH-002",
+      "name": "江景承",
+      "role": "重要配角（父）",
+      "identity": "镇北侯，江小白之父，七境归元武道高手",
+      "age_feel": "中年（剧本明写「中年男子」）",
+      "appearance_anchors": [
+        "性别=男，中年",
+        "身份质感=边军出身的老牌武将，杀气重",
+        "随身武器=长刀（本章持刀，刀芒可延伸数丈）",
+        "{{待确认：须发样式与体型}}",
+        "{{待确认：侯府常服或甲胄}}"
+      ],
+      "wardrobe_ids": ["WD-002"],
+      "voice_id": "VC-002",
+      "identity_mode": "fictional",
+      "first_appearance": "EP01 开场",
+      "status": "draft",
+      "notes": "剧本给了性别与年龄段，其余待确认"
+    },
+    {
+      "id": "CH-003",
+      "name": "沈芸",
+      "role": "重要配角（母）",
+      "identity": "江小白之母，侯府夫人",
+      "age_feel": "中年（剧本明写「中年女子」）",
+      "appearance_anchors": [
+        "性别=女，中年",
+        "面容=温和",
+        "气质=端庄",
+        "服装=素雅（剧本明写「衣着素雅」）",
+        "{{待确认：发型与服饰具体颜色}}"
+      ],
+      "wardrobe_ids": ["WD-003"],
+      "voice_id": "VC-003",
+      "identity_mode": "fictional",
+      "first_appearance": "EP02 开头",
+      "status": "draft",
+      "notes": "剧本给了面容、气质、服装调性，是三个主要角色里信息最全的"
+    },
+    {
+      "id": "CH-004",
+      "name": "礼部侍郎",
+      "role": "幕后推手",
+      "identity": "本次科举主考官之一，主动诱导前身买状元",
+      "appearance_anchors": ["{{待确认：本章未出场，仅由记忆提及}}"],
+      "wardrobe_ids": [],
+      "voice_id": "",
+      "identity_mode": "fictional",
+      "first_appearance": "EP02 记忆段落（若采用闪回表现）",
+      "status": "mentioned",
+      "notes": "本章未正面出场。若 EP02 用闪回表现设局，则需在 S2 建资产"
+    },
+    {
+      "id": "CH-005",
+      "name": "当今圣上",
+      "role": "悬念人物",
+      "identity": "被江小白怀疑为设局者，本章未证实",
+      "appearance_anchors": ["{{待确认：本章未出场，仅为猜测}}"],
+      "wardrobe_ids": [],
+      "voice_id": "",
+      "identity_mode": "fictional",
+      "first_appearance": "{{未出场}}",
+      "status": "mentioned",
+      "notes": "仅作悬念埋点，本章不建资产"
+    },
+    {
+      "id": "CH-006",
+      "name": "江家两位兄长",
+      "role": "背景设定",
+      "identity": "江小白之上两位兄长，均已战死沙场，江家因此只剩一子",
+      "appearance_anchors": ["{{待确认：可作为牌位或回忆闪回出现}}"],
+      "wardrobe_ids": [],
+      "voice_id": "",
+      "identity_mode": "fictional",
+      "first_appearance": "EP02 台词提及（可视觉化为牌位）",
+      "status": "mentioned",
+      "notes": "若用牌位表现则只需一个道具级资产，不必建角色资产"
+    }
+  ],
+  "props": [
+    {
+      "id": "PR-001",
+      "name": "江景承的长刀",
+      "appearance_anchors": [
+        "长约三尺的制式长刀，刀身有实战磨损",
+        "出鞘时刀芒可外放延伸（本章延伸至数丈，视觉夸张）",
+        "刀锋微抬时寒光反射"
+      ],
+      "owner_character_id": "CH-002",
+      "status": "draft",
+      "notes": "本章最强视觉符号，开场即出现，必须优先定稿"
+    },
+    {
+      "id": "PR-002",
+      "name": "圣贤书",
+      "appearance_anchors": ["{{待确认：仅台词提及，可用作象征性空镜}}"],
+      "owner_character_id": "",
+      "status": "mentioned",
+      "notes": "江景承口中「文官捧着圣贤书」的意象"
+    },
+    {
+      "id": "PR-003",
+      "name": "科举榜单 / 状元文书",
+      "appearance_anchors": ["{{待确认：放榜之日才出现，本章未出场}}"],
+      "owner_character_id": "",
+      "status": "mentioned",
+      "notes": "后续剧情的关键证据道具，本章不需要建资产"
+    },
+    {
+      "id": "PR-004",
+      "name": "江家兄长牌位",
+      "appearance_anchors": ["{{待确认：若用牌位视觉化江家断后设定}}"],
+      "owner_character_id": "",
+      "status": "mentioned",
+      "notes": "可选。用来把「江家只剩一子」这句台词变成画面"
+    }
+  ],
+  "environments": [
+    {
+      "id": "EN-001",
+      "name": "镇北侯府·厅堂",
+      "time_of_day": "白天（剧本未明写，待确认）",
+      "appearance_anchors": [
+        "青石地面（剧本明写背脊与青石地面摩擦）",
+        "厅堂内有承重立柱（剧本明写砸在柱子旁边）",
+        "厅堂中央开阔，可供持刀对峙",
+        "侯府规格的陈设，木质结构为主"
+      ],
+      "reused_in_episodes": ["EP01", "EP02"],
+      "status": "draft",
+      "notes": "本章唯一实景，EP01 与 EP02 全程在同一空间，场景资产只需定稿一次"
+    },
+    {
+      "id": "EN-002",
+      "name": "金銮殿",
+      "appearance_anchors": ["{{待确认：仅台词提及}}"],
+      "reused_in_episodes": [],
+      "status": "mentioned",
+      "notes": "江景承台词中的意象，本章不出图"
+    },
+    {
+      "id": "EN-003",
+      "name": "北境战场",
+      "appearance_anchors": ["{{待确认：仅背景设定提及}}"],
+      "reused_in_episodes": [],
+      "status": "mentioned",
+      "notes": "两位兄长战死之地，本章不出图"
+    }
+  ],
+  "styles": [
+    {
+      "id": "ST-001",
+      "name": "古装权谋爽剧 · 电影感写实",
+      "palette": "侯府厅堂暖调木色与青石冷灰为主，刀光为高饱和冷白高光，人物服饰用低饱和哑光色",
+      "render_feel": "古装写实电影质感，中式古典考据向，非动画非国漫",
+      "camera_texture": "轻微胶片颗粒 + 浅景深，动作段落可加手持微抖",
+      "status": "draft",
+      "notes": "全片唯一风格锚。开场「四十米刀芒」需要特效级表现，是本片视觉记忆点"
+    }
+  ],
+  "wardrobe": [
+    {
+      "id": "WD-001",
+      "character_id": "CH-001",
+      "name": "江小白·世子常服（狼狈态）",
+      "appearance_anchors": ["{{待确认：颜色与纹样}}", "{{待确认：脏污破损程度}}"],
+      "appears_in_episodes": ["EP01", "EP02"],
+      "status": "draft"
+    },
+    {
+      "id": "WD-002",
+      "character_id": "CH-002",
+      "name": "江景承·侯府常服",
+      "appearance_anchors": ["{{待确认：深色武将系常服}}", "{{待确认：是否配甲片或护腕}}"],
+      "appears_in_episodes": ["EP01", "EP02"],
+      "status": "draft"
+    },
+    {
+      "id": "WD-003",
+      "character_id": "CH-003",
+      "name": "沈芸·夫人常服",
+      "appearance_anchors": ["衣着素雅（剧本明写）", "{{待确认：具体颜色与发式}}"],
+      "appears_in_episodes": ["EP02"],
+      "status": "draft"
+    }
+  ],
+  "timeline": [
+    {
+      "id": "TL-001",
+      "label": "现代（江小白前世）",
+      "episode_id": "EP01",
+      "script_ref": "「他前世好歹也是文科博士」",
+      "is_flashback": true,
+      "notes": "仅在记忆涌入段落闪现，可用 1-2 个碎片镜头表现"
+    },
+    {
+      "id": "TL-002",
+      "label": "大华王朝 · 当下（厅堂冲突）",
+      "episode_id": "EP01",
+      "script_ref": "全章主线",
+      "is_flashback": false,
+      "notes": "实时连续，全章发生在一个时间点、一个空间内"
+    },
+    {
+      "id": "TL-003",
+      "label": "原主记忆（买状元全过程）",
+      "episode_id": "EP02",
+      "script_ref": "「拿题，代考，一路几乎没有任何阻碍」",
+      "is_flashback": true,
+      "notes": "本片唯一需要闪回的叙事段落，也是引入礼部侍郎的时机"
+    }
+  ],
+  "plot_beats": [
+    {
+      "id": "PB-001",
+      "episode_id": "EP01",
+      "script_ref": "开篇「一脚踹出十米远」「四十米大刀」",
+      "beat_type": "hook",
+      "summary": "开场即高能：人被一脚踹飞撞柱，抬眼就是延伸到面前的刀芒"
+    },
+    {
+      "id": "PB-002",
+      "episode_id": "EP01",
+      "script_ref": "「难道……我穿越了？」至「镇北侯，江景承」",
+      "beat_type": "turn",
+      "summary": "记忆涌入，确认穿越；揭示身份为镇北侯府世子，持刀者是这具身体的父亲"
+    },
+    {
+      "id": "PB-003",
+      "episode_id": "EP01",
+      "script_ref": "「而且，你买的还是状元！」至「在打列祖列宗的脸」",
+      "beat_type": "conflict",
+      "summary": "冲突定性：买状元是重罪，江景承怒斥逆子"
+    },
+    {
+      "id": "PB-004",
+      "episode_id": "EP02",
+      "script_ref": "「小白他还是个孩子啊！」",
+      "beat_type": "turn",
+      "summary": "母亲沈芸登场挡刀，江景承收刀但怒气未消"
+    },
+    {
+      "id": "PB-005",
+      "episode_id": "EP02",
+      "script_ref": "「等到放榜之时」「江家也彻底断后吧」",
+      "beat_type": "conflict",
+      "summary": "危机升级：放榜就是铁证；两位兄长战死，江家只剩独子，出事即断后"
+    },
+    {
+      "id": "PB-006",
+      "episode_id": "EP02",
+      "script_ref": "「是主考官之一的礼部侍郎，主动找到了前身」",
+      "beat_type": "turn",
+      "summary": "疑点浮现：买状元太过顺利，像有人早就布好的局"
+    },
+    {
+      "id": "PB-007",
+      "episode_id": "EP02",
+      "script_ref": "「难不成是……当今圣上？」",
+      "beat_type": "climax",
+      "summary": "悬念拉高：江家手握北境兵权，最大受益者可能是皇帝本人"
+    },
+    {
+      "id": "PB-008",
+      "episode_id": "EP02",
+      "script_ref": "「他前世好歹也是文科博士，将状元做实就好！」",
+      "beat_type": "turn",
+      "summary": "主角底牌揭示：把假状元做成真状元，危机有了破局方向"
+    },
+    {
+      "id": "PB-009",
+      "episode_id": "EP02",
+      "script_ref": "「为今之计，怕是只有一个办法可行了」「哦吼，造反吗？」",
+      "beat_type": "ending",
+      "summary": "集尾钩子：父亲卖关子，儿子一句「造反吗？」把悬念顶到最高"
+    }
+  ],
+  "open_questions": [
+    {
+      "id": "Q-001",
+      "question": "江小白的外观设定：发型、服装主色与款式、体型身高、五官年龄感？（剧本无任何外貌描写）",
+      "blocking_stage": "S2",
+      "resolved": false
+    },
+    {
+      "id": "Q-002",
+      "question": "江景承的外观设定：须发样式、体型、服装是侯府常服还是带甲？长刀是制式还是异形？",
+      "blocking_stage": "S2",
+      "resolved": false
+    },
+    {
+      "id": "Q-003",
+      "question": "沈芸的外观细节：发型与服饰的具体颜色（剧本只给了「衣着素雅」「面容温和」「端庄」）",
+      "blocking_stage": "S2",
+      "resolved": false
+    },
+    {
+      "id": "Q-004",
+      "question": "第 1 章拆 2 集（每集约 60 秒）还是做单集 110-125 秒？影响分集表与投放节奏",
+      "blocking_stage": "S3",
+      "resolved": false
+    },
+    {
+      "id": "Q-005",
+      "question": "开场「四十米刀芒」做到什么程度？纯写实刀气、半写实光刃、还是高特效能量刀？直接决定 ST-001 风格锚与生成难度",
+      "blocking_stage": "S2",
+      "resolved": false
+    },
+    {
+      "id": "Q-006",
+      "question": "礼部侍郎与「当今圣上」本章不出场，是否需要在 EP02 用闪回露面？若露面则需提前建资产",
+      "blocking_stage": "S3",
+      "resolved": false
+    },
+    {
+      "id": "Q-007",
+      "question": "全剧共几章 / 几集？当前只提供了第 1 章，集数只能按本章推导",
+      "blocking_stage": "S3",
+      "resolved": false
+    }
+  ]
+}

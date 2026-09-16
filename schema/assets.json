@@ -1,0 +1,22 @@
+{
+  "project_name": "状元是买的，但才华是真的",
+  "updated_at": "",
+  "assets": [],
+  "voices": [],
+  "notes": "由 S2 填写。source: generated=生成 | trained=训练得到 | imported=外部导入。规则：只追加不覆盖，每次生成新增一行。soul_reference_id 留空（Soul 训练需 Basic 以上套餐，当前未购买）。",
+  "assets_field_reference": {
+    "asset_id": "CH-001 / PR-001 / EN-001 / WD-001 / ST-001",
+    "type": "character | prop | environment | wardrobe | style",
+    "anchor_file": "定稿参考图路径，后续所有镜头复用同一张",
+    "sha256": "定稿文件哈希，用于确认「还是那张图」",
+    "job_id": "生成它的 higgsfield 作业 ID，便于回溯与重跑",
+    "version": "v001 起递增"
+  },
+  "voices_field_reference": {
+    "asset_id": "VC-001",
+    "character_id": "绑定到哪个角色；一个角色只能绑一个音色",
+    "voice_id": "来自 higgsfield voices list",
+    "voice_type": "preset | element",
+    "engine_variant": "elevenlabs | minimax | seed_speech | vibe_voice | cozy_voice"
+  }
+}
