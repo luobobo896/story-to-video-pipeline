@@ -103,7 +103,7 @@ python3 tools/check_consistency.py --schema-dir <项目>/schema   # 随时查状
 
 | 工序 | 承载者 | 是否已有 |
 |---|---|---|
-| N0 | 本地命令（`mkdir` / `shasum`） | 有，docs/01 |
+| N0 | 本地命令（`mkdir` / `shasum`；Windows 算哈希用 `certutil -hashfile <文件> SHA256`，脚本内部是 Python `hashlib`） | 有，docs/01 |
 | N1 / N4（题材与时代、剧情节点与分集） | `novel-outline`（shuohao-skills）+ `meta.theme` 由本流水线补 | 有 |
 | N2 / N5（人物与服装、音色选型） | `novel-characters`（含音色提示词） | 有 |
 | N3（场景与物件） | `novel-art`（场景 + 叙事道具，含一致性锚点） | 有 |

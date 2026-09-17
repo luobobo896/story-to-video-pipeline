@@ -20,7 +20,7 @@ python3 $S/scripts/<tool>.py --help
 |---|---|
 | **问题现象** | 字幕烧录、文字叠加、防抖、带时间码的 QA 拼图全部报 `No such filter: 'drawtext'` / `'subtitles'` |
 | **判定标准** | `python3 $S/scripts/_contract.py doctor` 输出不是 `0 required missing` |
-| **修正要求** | ① `brew install ffmpeg-full`（keg-only，不覆盖系统 ffmpeg）；② **每次调用前** `export PATH="/opt/homebrew/opt/ffmpeg-full/bin:$PATH"`，因为工具用 `shutil.which("ffmpeg")` 找二进制 |
+| **修正要求** | ① 装一个**带 libass / freetype 的完整构建**：macOS `brew install ffmpeg-full`（keg-only，不覆盖系统 ffmpeg），Windows `scoop install ffmpeg` 或 `winget install Gyan.FFmpeg`（无 keg-only 分裂，装完即在 PATH 上）；② macOS **每次调用前** `export PATH="/opt/homebrew/opt/ffmpeg-full/bin:$PATH"`，Windows 上这条不需要（手工便携包才用 `$env:Path = "D:\tools\ffmpeg\bin;$env:Path"`），因为工具用 `shutil.which("ffmpeg")` 找二进制 |
 | **适用范围** | 所有用 ffmpeg-skill 的场合 |
 | **依据** | 实测：homebrew 的普通 `ffmpeg` formula **不包含** libass / freetype / libvidstab，doctor 会报 `4 required missing`；换 ffmpeg-full 后变成 `65 capabilities, 0 missing`。skill 自身的 doctor 给出的修复建议就是这一条 |
 

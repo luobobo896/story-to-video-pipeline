@@ -10,7 +10,7 @@ description: 剧本 / 小说到成片的影视制作流水线编排，短剧、�
 
 | 层 | 位置 | 内容 | 可变性 |
 |---|---|---|---|
-| **复用层** | `$PIPELINE_HOME`（默认 `/Users/hanson/work/个人文档/v-pr/story-to-video-pipeline`） | `rules/`、`tools/`、`docs/01–06,08,09`、本 skill | 装一次，**所有内容形态共用**（短剧 / 网剧 / 影视 / 动画 / 动漫 / 漫剧）；改这里等于改流程；**不放任何具体剧本的数据** |
+| **复用层** | `$PIPELINE_HOME`（macOS 上默认 `/Users/hanson/work/个人文档/v-pr/story-to-video-pipeline`；Windows 上就是本仓库路径，例：`C:\Users\<用户名>\aiwork\story-to-video-pipeline`） | `rules/`、`tools/`、`docs/01–06,08–11`、本 skill | 装一次，**所有内容形态共用**（短剧 / 网剧 / 影视 / 动画 / 动漫 / 漫剧）；改这里等于改流程；**不放任何具体剧本的数据** |
 | **项目层** | `$PIPELINE_HOME/projects/<项目名>/`（`-o` 也可放仓库外） | `schema/`（场记台账）、`project/`（素材）、`README.md`（**项目状态写这里**）、`docs/07`（项目实测） | 每个剧本一套，互不影响 |
 
 **不把 rules / tools / docs 复制进项目**——复制就是分叉，两处必然对不上。命令用 `--schema-dir <项目>/schema` 指到项目（只有一个项目时可省略，工具会自动选中）。
@@ -32,6 +32,8 @@ python3 $PIPELINE_HOME/tools/check_consistency.py --schema-dir <项目>/schema
 # ③ 只体检环境（工具没装齐、没登录，先跑这个）
 python3 $PIPELINE_HOME/tools/bootstrap.py --doctor
 ```
+
+Windows（PowerShell）：`python3` 换成 `python`，`$PIPELINE_HOME` 换成仓库绝对路径（如 `C:\Users\<用户名>\aiwork\story-to-video-pipeline`），路径分隔符用 `\`；其余步骤一致。换机装什么见 [docs/11](../../docs/11-windows-setup.md)。
 
 接手任何项目的第一件事都是 ②：**状态只在 `schema/` 里**，对话里的记忆不算数。
 
@@ -85,7 +87,7 @@ python3 $PIPELINE_HOME/tools/bootstrap.py --doctor
 ## 常见坑（都踩过）
 
 - 模型 ID 以 `higgsfield model list` 为准，文档里的 ID 会滞后。
-- 字幕 / 文字叠加前 `export PATH="/opt/homebrew/opt/ffmpeg-full/bin:$PATH"`（FF-001），系统 `ffmpeg` 不带 libass。
+- 字幕 / 文字叠加前 `export PATH="/opt/homebrew/opt/ffmpeg-full/bin:$PATH"`（FF-001，macOS：系统 `ffmpeg` 不带 libass）；Windows 上用 `scoop install ffmpeg` / `winget install Gyan.FFmpeg`，装完即在 PATH 上，不需要这一行。
 - **剪辑不得改变 `duration_s`**（FF-011）：它是字幕与配音的共同时间基准，改了必须重跑 `tools/make_srt.py`。
 - **台词预算在分镜阶段算**：`duration_s ≥ 台词字数 ÷ 4.4 + 0.5s`，超了就拆镜 / 精简台词 / 延长镜头，不要靠提速硬塞（VD-002）。
 - 音色必须海选试听后再定稿（VD-005）；预设音色没有语言与性别元数据，名字说明不了什么。

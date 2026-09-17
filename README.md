@@ -43,6 +43,16 @@ python3 tools/bootstrap.py 剧本.txt            # 铺出一个独立项目（-o
 python3 tools/check_consistency.py --schema-dir projects/<项目名>/schema   # 随时查状态
 ```
 
+Windows（PowerShell）把 `python3` 写成 `python`，体检与铺项目命令一一对应：
+
+```powershell
+python tools\bootstrap.py --doctor
+python tools\bootstrap.py 剧本.txt
+python tools\check_consistency.py --schema-dir projects\<项目名>\schema
+```
+
+Windows 要装什么、哪些命令与 macOS 不同、哪里还没实测，见 [docs/11](docs/11-windows-setup.md)。
+
 第二步之后交给编排 skill：说一句「按 story-to-video 跑」，它按 N1 → N12 推，每步记进 `schema/` 台账并跑一次场记核对，三处人工验收关会停下来等你。
 
 换机的环境安装、注册、登录、验证见 [docs/09](docs/09-toolchain-setup.md)；工序依赖总图与验收关定义见 [docs/08](docs/08-pipeline-overview.md) 和 [docs/04](docs/04-risks-and-verification-gates.md)。
@@ -54,10 +64,13 @@ python3 tools/check_consistency.py --schema-dir projects/<项目名>/schema   # 
 | 项 | 值 |
 |---|---|
 | 系统 | macOS 15.7.5（arm64），Homebrew `/opt/homebrew` |
+| 系统（Windows） | Windows 11 x64，scoop `C:\Users\<用户名>\scoop`；装卸清单见 [docs/11](docs/11-windows-setup.md) |
 | 工作目录 | `~/work/个人文档/v-pr/`（本仓库 + 项目实例 + 第三方 skill 源码） |
 | Agent | Codex（`~/.codex/skills/`），Claude Code 也能用（`~/.claude/skills/`） |
 | Node 管理 | fnm（`~/.local/share/fnm`） |
 | 凭证 | `~/.config/higgsfield/` 下的登录态，没有别的 apikey |
+
+Windows 上只有三处与上表不同：命令里的 `python3` 写作 `python`；软链换成目录联接（`New-Item -ItemType Junction`）；ffmpeg 不分「普通 / full」两个包，装一个完整构建就同时有 `ffmpeg` 与 `ffprobe`。
 
 ---
 
@@ -91,12 +104,19 @@ ffmpeg -hide_banner -filters | grep -E "subtitles|drawtext"   # 两条都要有�
 
 报 `No such filter` 就是 PATH 没生效（`ffmpeg-skill` 用 `shutil.which("ffmpeg")` 找二进制）。
 
+**Windows 没有这层分裂**：`scoop install ffmpeg`（或 `winget install Gyan.FFmpeg`）装的就是带 libass / freetype 的完整构建，装完直接在 PATH 上，不用每次改环境变量。自证改用：
+
+```powershell
+ffmpeg -hide_banner -filters | Select-String -Pattern "subtitles|drawtext"   # 两条都要有输出
+```
+
 ### 3.3 higgsfield CLI 与账号（唯一要花钱的依赖）
 
 | 项 | 值 |
 |---|---|
 | 版本 / 路径 | 1.1.25（build 2026-09-14）· `/usr/local/bin/higgsfield` |
 | 安装 | `curl -fsSL https://raw.githubusercontent.com/higgsfield-ai/cli/main/install.sh \| sh` |
+| 安装（Windows） | `npm install -g --allow-scripts=@higgsfield/cli @higgsfield/cli`（官方 Windows 路径；`install.sh` 只支持 macOS / Linux。npm 12 默认拦 postinstall，少了 `--allow-scripts` 会装出没有二进制的空壳，见 [docs/11](docs/11-windows-setup.md)） |
 | 登录 | `higgsfield auth login`（设备码 → 浏览器授权），凭证落 `~/.config/higgsfield/credentials.json`（600） |
 | 账号 | 已登录，basic 套餐。余额随时在变，以 `higgsfield account status` 为准 |
 | 模型名 | 以 `higgsfield model list` 为准，文档会滞后；实测出图真名是 `nano_banana_pro` |
@@ -117,7 +137,7 @@ ffmpeg -hide_banner -filters | grep -E "subtitles|drawtext"   # 两条都要有�
 
 ## 四、Skills 清单
 
-### 4.1 本仓库自带（`skills/`，软链到 `~/.codex/skills/`）
+### 4.1 本仓库自带（`skills/`，软链挂到 `~/.codex/skills/`；Windows 用目录联接）
 
 | Skill | 版本 | 干什么 |
 |---|---|---|
@@ -156,6 +176,14 @@ ls ~/.codex/skills ~/.agents/skills | grep -E "novel-|higgsfield-|ffmpeg-skill|s
 # higgsfield 自检：在 agent 里说「用 higgsfield 出一张最小测试图」，它应调 higgsfield-generate 并返回图片 URL
 ```
 
+Windows 把 `ln -s` 换成目录联接（不需要管理员权限），其余照做：
+
+```powershell
+New-Item -ItemType Junction -Path "$env:USERPROFILE\.codex\skills\story-to-video" -Target "<本仓库根>\skills\story-to-video"
+New-Item -ItemType Junction -Path "$env:USERPROFILE\.codex\skills\higgsfield-generate" -Target "<higgsfield-skills 仓库根>\higgsfield-generate"
+Get-ChildItem "$env:USERPROFILE\.codex\skills" | Select-Object Name,LinkType   # 验证：LinkType 应为 Junction
+```
+
 本机实际位置：`higgsfield-skills/`、`shuohao-skills/`、`seedance-prompt-skill/` 都在仓库的上一级 `~/work/个人文档/v-pr/`，`ffmpeg-skill` 直接装在 `~/.agents/skills/`。逐条的验证命令与登录态排查见 [docs/09](docs/09-toolchain-setup.md)。
 
 ### 4.3 Codex 内置（按需）
@@ -181,7 +209,7 @@ ls ~/.codex/skills ~/.agents/skills | grep -E "novel-|higgsfield-|ffmpeg-skill|s
 | 组件 | 路径 | 是什么 |
 |---|---|---|
 | 规则库 | `rules/` | 与剧本、模型无关的硬约束（人写）：`COMP` 12 项 · `ME` 10 条 · `PH` 11 条 · `VD` 6 条 · `FF` 11 条，阈值分 `[硬]` / `[软]` |
-| 通用文档 | `docs/01–06`、`08–10` | 01 阶段说明 · 02 一致性控制 · 03 依赖与凭证 · 04 风险与验收关 · 05 运行与编排 · 06 连贯性与物理检查清单 · 08 工序依赖总图 · 09 工具链安装 · 10 账号档位与积分 |
+| 通用文档 | `docs/01–06`、`08–11` | 01 阶段说明 · 02 一致性控制 · 03 依赖与凭证 · 04 风险与验收关 · 05 运行与编排 · 06 连贯性与物理检查清单 · 08 工序依赖总图 · 09 工具链安装（macOS） · 10 账号档位与积分 · 11 Windows 换机 |
 | 脚本 | `tools/` | 7 个零依赖脚本，见下表 |
 | 骨架模板 | `templates/schema/` | 新项目 `schema/` 的骨架，`bootstrap.py` 的唯一来源 |
 | 项目实例 | `projects/<项目名>/` | 每个剧本一套（Codex 写）：`schema/`（台账）、`project/`（素材）、`docs/07`（实测记录）、`README.md`（状态） |
@@ -272,7 +300,7 @@ story-to-video-pipeline/                        ← 复用层：不含任何具�
 ├── README.md                      本文件（总清单）
 ├── skills/
 │   └── story-to-video/      编排 skill（软链到 ~/.codex/skills/）
-├── docs/                          通用文档 01–06 / 08 / 09 / 10（项目实测记录在项目自己的 docs/07）
+├── docs/                          通用文档 01–06 / 08–11（项目实测记录在项目自己的 docs/07）
 ├── rules/                         规则库：COMP / ME / PH / VD / FF
 ├── tools/                         脚本：bootstrap / check_consistency / make_srt / tts_batch / record_shot / eye / _project
 ├── templates/schema/              新项目骨架（bootstrap 的唯一来源）

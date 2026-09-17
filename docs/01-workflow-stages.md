@@ -162,6 +162,8 @@ S3 分镜阶段就按镜头性质选好路线，写进 `shots.csv` 的 `model` �
 ```bash
 S=~/.agents/skills/ffmpeg-skill
 export PATH="/opt/homebrew/opt/ffmpeg-full/bin:$PATH"     # FF-001：不加这行字幕与文字叠加全废
+# Windows：scoop/winget 装的 ffmpeg 已在 PATH 上，这一行不需要；手工便携包用
+# $env:Path = "D:\tools\ffmpeg\bin;$env:Path"（见 docs/11）
 
 # 1) 先读规格再规划（FF-002）
 python3 $S/scripts/probe.py project/work/edit/EP01_16x9_v001.mp4
