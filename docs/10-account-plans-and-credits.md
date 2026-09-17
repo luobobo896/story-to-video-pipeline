@@ -47,6 +47,37 @@
 | 「Seedance 2.0 Fast」 | CLI 里**不是独立模型**，是 `seedance_2_0 --mode fast`（`mode: std\|fast`，默认 std） | 分镜表写 `seedance_2_0` 就够，执行时用 `--mode fast` |
 | —（官网未写） | `--mode fast` **只支持 480p / 720p**；1080p / 4K 必须 std，而 std 属 Pro 档 | Basic 上最高 720p |
 
+### 2026-09-17 复测：Basic 档的 `seedance_2_0` 路径已全部堵死
+
+在 Windows 机上重跑了一圈报价与提交，本文第二节「Basic 有 Fast 与 Mini 可用」的口径**已经不成立**：
+
+| 命令 | 实际返回 | 含义 |
+|---|---|---|
+| `generate cost seedance_2_0 --mode fast ...` | `Error: Not found` | fast 模式下线，连报价都不给 |
+| `generate cost seedance_2_0_mini ...` | `Error: Not found` | mini 模型下线 |
+| `generate cost seedance_2_0 --mode std --duration 5 --resolution 720p` | `22.5 credits` | **报价照给**，看不出档位问题 |
+| `generate create seedance_2_0 --mode std ... --wait` | `Error: "Pro" or "Ultimate" plan required` | 提交被档位拦下 |
+
+由此得到两条必须记住的操作事实：
+
+1. **`generate cost` 只算价格，不校验档位**。「报价给得出 22.5」不等于「这一档能跑」；能不能跑要拿 `generate create` 试，被拒的作业不扣积分。
+2. **`generate cost` 只是估价，实扣看流水**（`higgsfield account transactions`）。本轮实测：`seedance1_5 --duration 4 --resolution 720p` 报价 **4.8**，实际扣 **2.4**——差一倍（本次脚本用了 `--generate_audio false`，是否为成因未定论，不要按报价做精确预算）。
+
+**Basic 档实测能提交的视频模型**（2026-09-17 报价，4 秒）：
+
+| 模型 | 4s 报价 | 备注 |
+|---|---|---|
+| `veo3_1_lite` | 4 | 最便宜，支持首帧 |
+| `seedance1_5` | 4.8（实际 720p/4s 扣 2.4） | 与 Seedance 同族，支持首帧，`generate_audio` 默认开 |
+| `kling3_0_turbo` | 6 | 支持首帧 |
+| `wan3_0` | 7 | |
+| `minimax_h3` / `kling3_0` | 8 | |
+| `grok_video_v15` | 18 | 支持首帧 |
+
+（`minimax_hailuo` 时长枚举是 6/10，`wan2_6` 是 5/10/15，传 4 会报 `Invalid values`。）
+
+**对项目的影响**：N8 的默认模型 `seedance_2_0` 在 Basic 上跑不通，样例项目的 Q-009（「就用 Fast/Mini，还是升 Pro」）现在只剩两个答案——**升 Pro 拿到 std/1080p**，或**改用上表里 Basic 能跑的替代模型**（代价是丢掉多图参考 + 自带音频这条一致性策略）。这是作者的取舍，写进 `open_questions` 由人拍板。
+
 ---
 
 ## 三、单价表（本机 `generate cost` 实测）
