@@ -16,7 +16,7 @@
 
 ### 安全管理建议
 
-1. **`credentials.json` 按密钥对待**：`chmod 600`，不复制、不提交、不截图分享。
+1. **`credentials.json` 按密钥对待**：`chmod 600`；Windows 没有 `chmod`，用 `icacls` 收 ACL（见 [11](11-windows-setup.md) 第六节）。不复制、不提交、不截图分享。
 2. **不回显**：任何脚本、日志、对话里都不要打印 token；跑脚本前不要开 `set -x`。
 3. **不进版本库**：`.gitignore` 已忽略 `.env`、`project/work/`、`project/delivery/`。文本资产（`schema/`、`docs/`）正常入库。
 4. **泄漏即撤销**：怀疑泄漏立刻 `higgsfield auth logout` 并在平台侧处理，而不是"先删 commit"。
@@ -83,6 +83,8 @@ ln -s ../seedance-prompt-skill ~/.agents/skills/seedance-prompt-skill # ✅ 已�
 ln -s <本仓库>/skills/story-to-video ~/.codex/skills/            # ✅ 已装
 ```
 
+（Windows：软链换成目录联接 `New-Item -ItemType Junction`，`python3` 换成 `python`，见 [11-windows-setup.md](11-windows-setup.md)。）
+
 完整清单（安装 / 注册 / 登录 / 验证 / 失败信号）见 [09-toolchain-setup.md](09-toolchain-setup.md)。
 
 ---
@@ -116,12 +118,16 @@ ln -s <本仓库>/skills/story-to-video ~/.codex/skills/            # ✅ 已装
 | 工具 | 版本 | 用途 |
 |---|---|---|
 | `ffmpeg` / `ffprobe` | 8.1.2 | 拼接、裁剪、转码、混音、规格核对 |
-| `ffmpeg-full` | **9.0.1（必须另装）** | 字幕烧录、文字叠加、防抖。普通 `ffmpeg` formula **不含** libass/freetype/libvidstab，`brew install ffmpeg-full`，是 keg-only，调用前 `export PATH="/opt/homebrew/opt/ffmpeg-full/bin:$PATH"` |
+| `ffmpeg-full` | **9.0.1（macOS 必须另装）** | 字幕烧录、文字叠加、防抖。普通 `ffmpeg` formula **不含** libass/freetype/libvidstab，`brew install ffmpeg-full`，是 keg-only，调用前 `export PATH="/opt/homebrew/opt/ffmpeg-full/bin:$PATH"`。**Windows 不需要两个**：`winget install Gyan.FFmpeg` 的构建自带 libass |
 | `python3` | 3.14.6 | 场记核对、批处理脚本 |
 | `jq` | 1.8.2 | JSON / CSV 查询与转换 |
 | `ImageMagick (magick)` | 7.1.2 | 图片规格统一、加水印、拼版 |
 | `git` | 2.39.5 | 文本资产版本管理 |
 | `higgsfield` CLI | 1.1.25（**已安装**） | 全部生成类调用；`higgsfield model list` 是模型与参数的唯一口径（以 CLI 为准） |
+
+Windows 上的对照：`scoop install python git jq ffmpeg nodejs` + `winget install ImageMagick.ImageMagick`
+（实测 scoop 版卡在 innounp 404），Python 命令名是 `python`（不是 `python3`），哈希用自带的
+`certutil -hashfile <文件> SHA256`。逐条安装、实测坑与验证见 [11-windows-setup.md](11-windows-setup.md)。
 
 ---
 

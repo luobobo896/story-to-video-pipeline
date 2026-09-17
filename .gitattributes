@@ -1,0 +1,3 @@
+# 一律按 LF 存：Windows 上 git 默认的 core.autocrlf 会把 schema/*.csv、*.srt 检出成 CRLF，
+# 提交回来就是整文件 diff。图片/视频由 git 按二进制自动识别，不受这行影响。
+* text=auto eol=lf

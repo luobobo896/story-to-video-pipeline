@@ -69,7 +69,8 @@ def main() -> int:
     writer = csv.writer(buf, lineterminator="\n")
     writer.writerow(header)
     writer.writerows(data)
-    path.write_text(buf.getvalue(), encoding="utf-8")
+    # 统一 LF：Windows 上文本模式默认写 CRLF，同一份 shots.csv 跨机器会整文件 diff
+    path.write_text(buf.getvalue(), encoding="utf-8", newline="\n")
 
     changed = " ".join(f"{k}={v}" for k, v in updates.items())
     print(f"已更新 {args.shot}: {changed}")

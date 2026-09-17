@@ -284,12 +284,15 @@ def bootstrap(script: Path, out_dir: Path) -> int:
         "script_sha256": digest,
         "updated_at": date.today().isoformat(),
     })
-    bible_path.write_text(json.dumps(bible, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    # 台账统一 LF：Windows 上文本模式默认写 CRLF，同一份 schema 在 Mac / Windows 之间会整文件 diff
+    bible_path.write_text(json.dumps(bible, ensure_ascii=False, indent=2) + "\n",
+                          encoding="utf-8", newline="\n")
 
     assets_path = schema / "assets.json"
     assets = json.loads(assets_path.read_text(encoding="utf-8"))
     assets["project_name"] = name
-    assets_path.write_text(json.dumps(assets, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    assets_path.write_text(json.dumps(assets, ensure_ascii=False, indent=2) + "\n",
+                           encoding="utf-8", newline="\n")
 
     (out_dir / "README.md").write_text(f"""# {name}
 
@@ -310,7 +313,7 @@ cd {PIPELINE_HOME}
 然后让 Codex 按 skill `story-to-video` 跑 N1 → N12：
 读剧本产出 `schema/story_bible.json`（题材 / 人物 / 场景 / 道具 / 音色 / 分集），
 每一步改完文件就回跑校验器；定妆图定稿（G2）、视觉十项（G4）、成片通看（G6）三处必须停下来等作者。
-""", encoding="utf-8")
+""", encoding="utf-8", newline="\n")
 
     print(f"项目已铺好：{out_dir}")
     print(f"  项目名      {name}")

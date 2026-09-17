@@ -105,7 +105,8 @@ def main() -> int:
         cues.append((start, cue_end, wrap(text, args.max_chars), r.get("shot_id", "")))
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    with out_path.open("w", encoding="utf-8") as f:
+    # 统一 LF：Windows 上文本模式默认写 CRLF，字幕文件在机器之间会整文件 diff
+    with out_path.open("w", encoding="utf-8", newline="\n") as f:
         for i, (start, end, text, sid) in enumerate(cues, start=1):
             f.write(f"{i}\n{ts(start)} --> {ts(end)}\n{text}\n\n")
 

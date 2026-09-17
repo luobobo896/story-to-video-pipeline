@@ -54,7 +54,8 @@ def write_shots(path: Path, header: list[str], rows: list[dict[str, str]]) -> No
     w.writerow(header)
     for r in rows:
         w.writerow([r.get(c, "") for c in header])
-    path.write_text(buf.getvalue(), encoding="utf-8")
+    # 统一 LF：Windows 上文本模式默认写 CRLF，同一份 shots.csv 跨机器会整文件 diff
+    path.write_text(buf.getvalue(), encoding="utf-8", newline="\n")
 
 
 def voice_map() -> dict[str, dict[str, str]]:
@@ -204,7 +205,7 @@ def main() -> int:
             txt = r["dialogue"].replace("【内心OS】", "OS：")[:26]
             lines.append(f"| {sid[-5:]} | {nm} | {preset} | {eng} | {txt} | {a or '-'}s | {d:g}s | "
                          f"{slack:+.2f}s | {sid[-5:]} | {verdict} |")
-        rep.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        rep.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
         print(f"\n对照表：{rep.relative_to(ROOT)}")
     return 0
 

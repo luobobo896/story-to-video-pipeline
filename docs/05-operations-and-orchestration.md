@@ -57,6 +57,9 @@
 
 ## 四、单集通告单（照单执行）
 
+（下面是 bash 写法。Windows PowerShell 里变量写成 `$P = "$PIPELINE_HOME\projects\{{项目名}}"`，
+`python3` 换成 `python`，其余命令一致；装法与坑见 [11](11-windows-setup.md)。）
+
 ```bash
 # 命令都在复用层根目录执行；P 指向项目实例（也可以是仓库外的路径）
 PIPELINE_HOME=/Users/hanson/work/个人文档/v-pr/story-to-video-pipeline
@@ -126,7 +129,7 @@ git tag ep{{NN}}-v001
 
 | 项 | 要求 |
 |---|---|
-| 操作系统 | macOS / Linux（本机 macOS 已具备全部本地工具） |
+| 操作系统 | macOS / Linux / Windows 10+（本机 macOS 已具备全部本地工具；Windows 装法见 [11](11-windows-setup.md)） |
 | 必须安装 | `higgsfield` CLI（**已装 v1.1.25**）、`python3`、`ffmpeg`、`git` |
 | 推荐安装 | `jq`、`ImageMagick` |
 | 账号 | Higgsfield 账号（免费额度可跑生成；Soul 训练需 Basic 以上，本项目不用） |
@@ -140,6 +143,9 @@ higgsfield auth login
 higgsfield account status
 higgsfield model list            # 核实现行模型，别照抄文档
 ```
+
+Windows 换成 `npm install -g --allow-scripts=@higgsfield/cli @higgsfield/cli` + `higgsfield workspace set <id>`
+（新机器第一次必须选工作区，否则 `account status` 报的是没选工作区而不是没登录）。逐条见 [11-windows-setup.md](11-windows-setup.md)。
 
 ### 目录约定
 
