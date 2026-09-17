@@ -25,6 +25,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+from _console import force_utf8_stdio, run_text
+
 MAX_KB = 300
 # 实测：定妆图 1280px/q5 = 65KB，9:16 的 3x2 拼图 1280px/q5 = 158KB，
 # 都远在 300KB 以内，脸和字幕还看得清。超限才降级到下一档。
@@ -37,7 +39,7 @@ def die(msg: str) -> None:
 
 
 def run(cmd: list[str]) -> subprocess.CompletedProcess:
-    return subprocess.run(cmd, capture_output=True, text=True)
+    return run_text(cmd)
 
 
 def probe(path: str) -> dict:
@@ -95,6 +97,7 @@ def sheet(src: str, cols: int, rows: int, width: int, quality: int, out: Path, m
 
 
 def main() -> int:
+    force_utf8_stdio()
     parser = argparse.ArgumentParser(description="把图片/视频压成 ≤300KB 的 JPEG 再看")
     parser.add_argument("input", nargs="?", help="图片或视频")
     parser.add_argument("--at", help="取单帧的时间点，如 12.5")

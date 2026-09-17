@@ -19,10 +19,12 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _console import force_utf8_stdio  # noqa: E402
 from _project import resolve_schema_dir  # noqa: E402
 
 
 def main() -> int:
+    force_utf8_stdio()
     parser = argparse.ArgumentParser(description="回填某个镜头的字段")
     parser.add_argument("--shot", required=True, help="shot_id，如 EP01-SC01-SH001")
     parser.add_argument("--set", action="append", default=[], metavar="KEY=VALUE",

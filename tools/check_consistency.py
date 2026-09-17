@@ -25,6 +25,7 @@ import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _console import PY, force_utf8_stdio, run_text  # noqa: E402  （同目录小工具，零依赖）
 from _project import resolve_schema_dir  # noqa: E402  （同目录小工具，零依赖）
 
 SHOT_ID_RE = re.compile(r"^EP\d{2}-SC\d{2}-SH\d{3}$")
@@ -81,10 +82,9 @@ def read_json(path: Path) -> dict:
 def probe_streams(path: Path) -> list[str]:
     """返回容器里的流类型列表，如 ['video', 'audio']。失败返回 []。"""
     try:
-        out = subprocess.run(
+        out = run_text(
             ["ffprobe", "-v", "error", "-show_entries", "stream=codec_type",
-             "-of", "csv=p=0", str(path)],
-            capture_output=True, text=True, timeout=60)
+             "-of", "csv=p=0", str(path)], timeout=60)
     except (OSError, subprocess.SubprocessError):
         return []
     return [ln.strip() for ln in out.stdout.splitlines() if ln.strip()]
@@ -92,10 +92,9 @@ def probe_streams(path: Path) -> list[str]:
 
 def probe_dims(path: Path) -> tuple[int, int]:
     try:
-        out = subprocess.run(
+        out = run_text(
             ["ffprobe", "-v", "error", "-select_streams", "v:0",
-             "-show_entries", "stream=width,height", "-of", "csv=p=0", str(path)],
-            capture_output=True, text=True, timeout=60)
+             "-show_entries", "stream=width,height", "-of", "csv=p=0", str(path)], timeout=60)
         w, h = out.stdout.strip().split(",")[:2]
         return int(w), int(h)
     except (OSError, subprocess.SubprocessError, ValueError):
@@ -178,10 +177,9 @@ def check_delivery(project_root: Path, shots: list[dict[str, str]], draft: bool)
     # 台词塞不塞得下：所有台词音频的总长不能超过成片时长
     if total_voice:
         try:
-            dur = float(subprocess.run(
+            dur = float(run_text(
                 ["ffprobe", "-v", "error", "-show_entries", "format=duration",
-                 "-of", "csv=p=0", str(clips[-1])],
-                capture_output=True, text=True, timeout=60).stdout.strip())
+                 "-of", "csv=p=0", str(clips[-1])], timeout=60).stdout.strip())
         except (OSError, subprocess.SubprocessError, ValueError):
             dur = 0.0
         if dur and total_voice > dur:
@@ -340,7 +338,7 @@ def check_subtitle(project_root: Path, shots: list[dict]) -> list[str]:
     if len(cues) != len(expected):
         errors.append(
             f"[R16] {srt.name} 有 {len(cues)} 条字幕，shots.csv 里有台词的镜头是 {len(expected)} 个："
-            f"字幕与分镜不同步，重跑 python3 tools/make_srt.py")
+            f"字幕与分镜不同步，重跑 {PY} tools/make_srt.py")
         return errors
     for (sid, want), cue in zip(expected, cues):
         h, m, sec, ms = (int(x) for x in cue[:4])
@@ -348,7 +346,7 @@ def check_subtitle(project_root: Path, shots: list[dict]) -> list[str]:
         if abs(got - want) > 0.05:
             errors.append(
                 f"[R16] {srt.name} 里 {sid} 的字幕起始 {got:.2f}s，按分镜应为 {want:.2f}s"
-                f"（差 {abs(got - want):.2f}s）：改过 shots.csv 就必须重跑 python3 tools/make_srt.py")
+                f"（差 {abs(got - want):.2f}s）：改过 shots.csv 就必须重跑 {PY} tools/make_srt.py")
     return errors
 
 
@@ -744,6 +742,7 @@ def selftest() -> int:
 
 
 def main() -> int:
+    force_utf8_stdio()
     parser = argparse.ArgumentParser(description="影视制作流水线场记核对")
     parser.add_argument("--schema-dir", default="",
                         help="项目 schema 目录；不给则自动选中 projects/ 下唯一的项目")

@@ -21,17 +21,22 @@ from __future__ import annotations
 import argparse
 import json
 import re
-import subprocess
+import shutil
 import sys
+import urllib.request
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _console import force_utf8_stdio, run_text  # noqa: E402
 from _project import resolve_project_root  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 SCHEMA = ROOT / "schema"
 SHOTS = SCHEMA / "shots.csv"
 AUDIO = ROOT / "project/work/audio"
+# Windows 上 npm 装出来的 CLI 是 higgsfield.CMD，subprocess 直接传 "higgsfield" 会
+# FileNotFoundError（CreateProcess 不做 PATHEXT 补全）；先问 which 要全路径。
+HIGGSFIELD = shutil.which("higgsfield") or "higgsfield"
 
 
 def read_shots(path: Path) -> tuple[list[str], list[dict[str, str]]]:
@@ -59,9 +64,9 @@ def voice_map() -> dict[str, dict[str, str]]:
 
 
 def probe_duration(path: Path) -> float | None:
-    out = subprocess.run(
+    out = run_text(
         ["ffprobe", "-v", "quiet", "-show_entries", "format=duration", "-of", "csv=p=0", str(path)],
-        capture_output=True, text=True)
+        timeout=60)
     try:
         return float(out.stdout.strip())
     except ValueError:
@@ -69,13 +74,13 @@ def probe_duration(path: Path) -> float | None:
 
 
 def tts(text: str, voice: dict[str, str]) -> str | None:
-    cmd = ["higgsfield", "generate", "create", "text2speech_v2",
+    cmd = [HIGGSFIELD, "generate", "create", "text2speech_v2",
            "--prompt", text,
            "--variant", voice.get("engine_variant") or "seed_speech",
            "--voice_type", voice.get("voice_type") or "preset",
            "--voice_id", voice["voice_id"],
            "--wait", "--json"]
-    out = subprocess.run(cmd, capture_output=True, text=True)
+    out = run_text(cmd)
     m = re.search(r'"result_url":\s*"([^"]+)"', out.stdout)
     if not m:
         print(f"    TTS 失败：{(out.stdout or out.stderr)[-200:]}", file=sys.stderr)
@@ -83,7 +88,22 @@ def tts(text: str, voice: dict[str, str]) -> str | None:
     return m.group(1)
 
 
+def download(url: str, dest: Path) -> bool:
+    """把生成结果下载到本地。用标准库而不是 curl：跨平台行为一致，失败也能报出来。"""
+    try:
+        with urllib.request.urlopen(url, timeout=120) as resp, dest.open("wb") as fh:
+            shutil.copyfileobj(resp, fh)
+    except OSError as exc:      # URLError / HTTPError 都是 OSError 的子类
+        print(f"    下载失败：{exc}", file=sys.stderr)
+        return False
+    if not dest.exists() or dest.stat().st_size == 0:
+        print(f"    下载失败：{dest} 是空文件", file=sys.stderr)
+        return False
+    return True
+
+
 def main() -> int:
+    force_utf8_stdio()
     ap = argparse.ArgumentParser(description="S5 批量配音")
     ap.add_argument("--shots", default="", help="按 shot_id 前缀过滤")
     ap.add_argument("--dry-run", action="store_true")
@@ -104,6 +124,10 @@ def main() -> int:
     vmap = voice_map()
     if not vmap:
         print("assets.json 的 voices[] 是空的 —— 先注册音色绑定（VC-###）", file=sys.stderr)
+        return 1
+    if not shutil.which("higgsfield"):
+        print("找不到 higgsfield CLI → npm install -g --allow-scripts=@higgsfield/cli @higgsfield/cli",
+              file=sys.stderr)
         return 1
 
     header, rows = read_shots(SHOTS)
@@ -137,7 +161,8 @@ def main() -> int:
         url = tts(text, vc)
         if not url:
             continue
-        subprocess.run(["curl", "-fsSL", url, "-o", str(out_path)], check=False)
+        if not download(url, out_path):
+            continue
         dur = probe_duration(out_path)
         shot_dur = float(r.get("duration_s") or 0)
         r["audio_file"] = str(out_path.relative_to(ROOT))

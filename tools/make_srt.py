@@ -19,6 +19,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _console import force_utf8_stdio  # noqa: E402
 from _project import resolve_schema_dir  # noqa: E402
 
 
@@ -49,6 +50,7 @@ def wrap(text: str, max_chars: int) -> str:
 
 
 def main() -> int:
+    force_utf8_stdio()
     parser = argparse.ArgumentParser(description="shots.csv -> SRT")
     parser.add_argument("--schema-dir",
                         default="", help="项目 schema 目录；不给则自动选中 projects/ 下唯一的项目")

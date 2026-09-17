@@ -14,6 +14,8 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+from _console import PY
+
 PIPELINE_HOME = Path(__file__).resolve().parent.parent
 
 
@@ -39,7 +41,7 @@ def resolve_schema_dir(explicit: str = "") -> Path | None:
     if len(found) == 1:
         return found[0]
     if not found:
-        print("找不到任何项目：先跑 python3 tools/bootstrap.py <剧本.txt> -o <项目目录>",
+        print(f"找不到任何项目：先跑 {PY} tools/bootstrap.py <剧本.txt> -o <项目目录>",
               file=sys.stderr)
         return None
     print("有多个项目，必须显式指定：", file=sys.stderr)
